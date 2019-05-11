@@ -30,9 +30,9 @@ static bool add_test(void (*fn)(void), const char* test_name)
 }
 
 #define TEST(name)                                                                  \
-void name();                                                                        \
-static bool name##_init = add_test(name, #name);                                    \
-void name()                                                                         \
+    void name();                                                                    \
+    static bool name##_init = add_test(name, #name);                                \
+    void name()                                                                     \
 
 int main() {
     for (auto test : tests)
@@ -44,19 +44,6 @@ int main() {
             printf(" * %s\n", failed_test);
     }
     return 0;
-}
-
-bool check_candidate_move(
-    const board_state_t* moves, std::size_t moves_cnt, const last_move_s& last_move)
-{
-    return std::any_of(moves, moves + moves_cnt, [&last_move](const auto& board) {
-            bool success = check_last_move(board, last_move);
-            if (success) {
-                printf("\nFound requested candidate move:\n\n");
-                gui::print_board(std::cout, board);
-            }
-            return success;
-        });
 }
 
 TEST(Internal_Meta_CheckLastMove_WhitePawnE2E3) {
@@ -104,15 +91,51 @@ TEST(Internal_Meta_CheckLastMove_BlackRookE3E2) {
     ASSERT(check_last_move(board, { PLAYER_BLACK, PIECE_ROOK, E3, E2 }));
 }
 
-TEST(Pawn_CandidateMoves_White_MoveForward) {
+auto one_pawn_board(const field_t pawn_position)
+{
     auto board = chess::EMPTY_BOARD;
     board[E1] = FWK;
     board[E8] = FBK;
-    board[E2] = FWP;
+    board[pawn_position] = FWP;
     gui::print_board(std::cout, board);
+    return board;
+}
+
+bool check_candidate_move(
+    const board_state_t* moves, const std::size_t moves_cnt, const last_move_s& last_move)
+{
+    return std::any_of(moves, moves + moves_cnt, [&last_move](const auto& board) {
+            bool success = check_last_move(board, last_move);
+            if (success) {
+                printf("\nFound requested candidate move:\n\n");
+                gui::print_board(std::cout, board);
+            }
+            return success;
+        });
+}
+
+bool all_candidate_moves_are_valid(const board_state_t* moves, const std::size_t moves_cnt)
+{
+    return std::all_of(moves, moves + moves_cnt, [](const auto& board) {
+            return validate_board_state(board);
+        });
+}
+
+TEST(Pawn_CandidateMoves_White_MoveForward_E2E3) {
+    auto board = one_pawn_board(E2);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    auto c_moves_cnt = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_cnt));
+    ASSERT(check_candidate_move(c_moves.get(), c_moves_cnt, { PLAYER_WHITE, PIECE_PAWN, E2, E3 }));
+}
+
+TEST(Pawn_CandidateMoves_White_MoveLongForward_E2E4) {
+    auto board = one_pawn_board(E2);
 
     auto c_moves = std::make_unique<board_state_t[]>(32);
-    auto c_moves_cnt = fill_candidate_moves(c_moves.get(), board);
+    auto c_moves_cnt = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
 
-    ASSERT(check_candidate_move(c_moves.get(), c_moves_cnt, { PLAYER_WHITE, PIECE_PAWN, E2, E3 }));
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_cnt));
+    ASSERT(check_candidate_move(c_moves.get(), c_moves_cnt, { PLAYER_WHITE, PIECE_PAWN, E2, E4 }));
 }

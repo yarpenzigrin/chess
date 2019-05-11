@@ -238,19 +238,34 @@ constexpr field_t LAST_MOVE_GET_TO(last_move_t last_move) {
     return static_cast<field_t>((last_move & LAST_MOVE_TO_MASK) >> LAST_MOVE_TO_POS);
 }
 
-std::size_t fill_candidate_moves(board_state_t* moves, const board_state_t& board) {
+std::size_t fill_candidate_moves(
+    board_state_t* moves, const board_state_t& board, player_t player) {
     *moves = board;
-    (*moves)[E2] = FIELD_SET_PIECE((*moves)[E2], PIECE_EMPTY);
-    (*moves)[E3] = FIELD_SET_PIECE((*moves)[E3], PIECE_PAWN);
-    (*moves)[E3] = FIELD_SET_PLAYER((*moves)[E3], PLAYER_WHITE);
+    auto& move1 = moves[0];
+    move1[E2] = FIELD_SET_PIECE(move1[E2], PIECE_EMPTY);
+    move1[E3] = FIELD_SET_PIECE(move1[E3], PIECE_PAWN);
+    move1[E3] = FIELD_SET_PLAYER(move1[E3], player);
 
     last_move_t last_move = 0;
-    last_move = LAST_MOVE_SET_PLAYER(last_move, PLAYER_WHITE);
+    last_move = LAST_MOVE_SET_PLAYER(last_move, player);
     last_move = LAST_MOVE_SET_PIECE(last_move, PIECE_PAWN);
     last_move = LAST_MOVE_SET_FROM(last_move, E2);
     last_move = LAST_MOVE_SET_TO(last_move, E3);
-    BOARD_STATE_META_SET_LAST_MOVE(*moves, last_move);
-    return 1;
+    BOARD_STATE_META_SET_LAST_MOVE(move1, last_move);
+
+    auto& move2 = moves[1];
+    move2[E2] = FIELD_SET_PIECE(move2[E2], PIECE_EMPTY);
+    move2[E4] = FIELD_SET_PIECE(move2[E4], PIECE_PAWN);
+    move2[E4] = FIELD_SET_PLAYER(move2[E4], player);
+
+    last_move = 0;
+    last_move = LAST_MOVE_SET_PLAYER(last_move, player);
+    last_move = LAST_MOVE_SET_PIECE(last_move, PIECE_PAWN);
+    last_move = LAST_MOVE_SET_FROM(last_move, E2);
+    last_move = LAST_MOVE_SET_TO(last_move, E4);
+    BOARD_STATE_META_SET_LAST_MOVE(move2, last_move);
+
+    return 2;
 }
 
 struct last_move_s
@@ -285,9 +300,25 @@ bool check_last_move(const board_state_t& board, const last_move_s& move) {
     return move.player == last_move_player and
         move.piece == last_move_piece and
         move.from == last_move_from and
-        move.to == last_move_to and
-        move.piece == FIELD_GET_PIECE(board[move.to]) and
-        PIECE_EMPTY == FIELD_GET_PIECE(board[move.from]);
+        move.to == last_move_to;
+}
+
+bool validate_board_state(const board_state_t& board)
+{
+    last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
+    piece_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
+    piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+    field_t last_move_from = LAST_MOVE_GET_FROM(last_move);
+    field_t last_move_to = LAST_MOVE_GET_TO(last_move);
+
+    if (last_move_piece != PIECE_EMPTY and
+        last_move_player != FIELD_GET_PLAYER(board[last_move_to]) and
+        last_move_piece != FIELD_GET_PIECE(board[last_move_to]) and
+        PIECE_EMPTY != FIELD_GET_PIECE(board[last_move_from]))
+    {
+        return false;
+    }
+    return true;
 }
 
 }  // namespace chess
