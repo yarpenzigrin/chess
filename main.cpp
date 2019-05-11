@@ -129,7 +129,7 @@ auto one_pawn_board(const field_t pawn_position)
 }
 
 bool check_candidate_move(
-    const board_state_t* moves, const board_state_t* moves_end, const last_move_s& last_move)
+    const board_state_t* moves, const board_state_t* moves_end, const move_s& last_move)
 {
     return std::any_of(moves, moves_end, [&last_move](const auto& board) {
             bool success = check_last_move(board, last_move);
@@ -174,4 +174,13 @@ TEST(Pawn_CandidateMoves_White_MoveForward_D2D3) {
 
     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
     ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, D2, D3 }));
+}
+
+TEST(Pawn_CandidateMoves_White_MoveForward_D2D4) {
+    auto board = one_pawn_board(D2);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, D2, D4 }));
 }

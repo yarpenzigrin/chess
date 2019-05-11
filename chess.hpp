@@ -288,46 +288,50 @@ constexpr field_t field_right(const field_t field) {
         static_cast<uint8_t>(field_file(field)) + 1, static_cast<uint8_t>(field_rank(field)));
 }
 
+struct move_s {
+    player_t player;
+    piece_t piece;
+    field_t from;
+    field_t to;
+};
+
+void apply_move(board_state_t& board, const move_s& move) {
+    board[move.from] = FIELD_SET_PIECE(board[move.from], PIECE_EMPTY);
+    board[move.to] = FIELD_SET_PIECE(FIELD_SET_PLAYER(board[move.to], move.player), move.piece);
+
+    last_move_t last_move = 0;
+    last_move = LAST_MOVE_SET_PLAYER(last_move, move.player);
+    last_move = LAST_MOVE_SET_PIECE(last_move, move.piece);
+    last_move = LAST_MOVE_SET_FROM(last_move, move.from);
+    last_move = LAST_MOVE_SET_TO(last_move, move.to);
+    BOARD_STATE_META_SET_LAST_MOVE(board, last_move);
+}
+
 board_state_t* add_white_pawn_move_up(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     field_t target_field = field_up(field);
-    if (FIELD_INVALID == target_field)
-        return moves;
-    if (PIECE_EMPTY != board[target_field])
-        return moves;
+    if (FIELD_INVALID == target_field or PIECE_EMPTY != board[target_field]) return moves;
 
-    auto& move = moves[0];
-    move = board;
-    move[field] = FIELD_SET_PIECE(move[field], PIECE_EMPTY);
-    move[target_field] =
-        FIELD_SET_PIECE(FIELD_SET_PLAYER(move[target_field], PLAYER_WHITE), PIECE_PAWN);
+    apply_move(*moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
+    return moves + 1;
+}
 
-    last_move_t last_move = 0;
-    last_move = LAST_MOVE_SET_PLAYER(last_move, PLAYER_WHITE);
-    last_move = LAST_MOVE_SET_PIECE(last_move, PIECE_PAWN);
-    last_move = LAST_MOVE_SET_FROM(last_move, field);
-    last_move = LAST_MOVE_SET_TO(last_move, target_field);
-    BOARD_STATE_META_SET_LAST_MOVE(move, last_move);
+board_state_t* add_white_pawn_move_up_long(
+    board_state_t* moves, const board_state_t& board, const field_t field) {
+    field_t target_field = field_up(field);
+    if (FIELD_INVALID == target_field or PIECE_EMPTY != board[target_field]) return moves;
+    target_field = field_up(target_field);
+    if (FIELD_INVALID == target_field or PIECE_EMPTY != board[target_field]) return moves;
+
+    apply_move(*moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
     return moves + 1;
 }
 
 board_state_t* fill_white_pawn_candidate_moves(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     moves = add_white_pawn_move_up(moves, board, field);
-
-    auto& move2 = moves[0];
-    move2 = board;
-    move2[E2] = FIELD_SET_PIECE(move2[E2], PIECE_EMPTY);
-    move2[E4] = FIELD_SET_PIECE(move2[E4], PIECE_PAWN);
-    move2[E4] = FIELD_SET_PLAYER(move2[E4], PLAYER_WHITE);
-
-    last_move_t last_move = 0;
-    last_move = LAST_MOVE_SET_PLAYER(last_move, PLAYER_WHITE);
-    last_move = LAST_MOVE_SET_PIECE(last_move, PIECE_PAWN);
-    last_move = LAST_MOVE_SET_FROM(last_move, E2);
-    last_move = LAST_MOVE_SET_TO(last_move, E4);
-    BOARD_STATE_META_SET_LAST_MOVE(move2, last_move);
-    return moves + 1;
+    moves = add_white_pawn_move_up_long(moves, board, field);
+    return moves;
 }
 
 board_state_t* fill_black_pawn_candidate_moves(
@@ -355,15 +359,7 @@ board_state_t* fill_candidate_moves(
     return moves;
 }
 
-struct last_move_s
-{
-    player_t player;
-    piece_t piece;
-    field_t from;
-    field_t to;
-};
-
-bool check_last_move(const board_state_t& board, const last_move_s& move) {
+bool check_last_move(const board_state_t& board, const move_s& move) {
     last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
     piece_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
     piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
