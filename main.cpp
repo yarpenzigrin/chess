@@ -2,21 +2,28 @@
 #include <memory>
 #include <vector>
 #include <functional>
+#include <exception>
 #include "chess_tty_gui.hpp"
 
 using namespace chess;
 
 #define ASSERT(cond) if (!(cond)) { printf("\n!!! %s:%d Condition:\n  \"%s\"\nfailed.\n\n", \
-    __FILE__, __LINE__, #cond); }
+    __FILE__, __LINE__, #cond);                                                             \
+    throw std::runtime_error("Assertion failed."); }
 
 using Test = std::function<void(void)>;
 std::vector<Test> tests;
+std::vector<const char*> failures;
 
 static bool add_test(void (*fn)(void), const char* test_name)
 {
     tests.push_back([fn, test_name](){
         printf("***** %s *****\n", test_name);
-        fn();
+        try {
+            fn();
+        } catch (const std::runtime_error& e) {
+            failures.push_back(test_name);
+        }
         printf("^^^^^ %s ^^^^^\n", test_name);
     });
     return true;
@@ -30,6 +37,12 @@ void name()                                                                     
 int main() {
     for (auto test : tests)
         test();
+    if (!failures.empty())
+    {
+        printf("\n\nFAILURES:\n");
+        for (auto failed_test : failures)
+            printf(" * %s\n", failed_test);
+    }
     return 0;
 }
 
