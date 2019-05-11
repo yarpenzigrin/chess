@@ -132,9 +132,9 @@ auto one_pawn_board(const field_t pawn_position) {
     return board;
 }
 
-bool check_candidate_move(
+const board_state_t* find_candidate_move(
     const board_state_t* moves, const board_state_t* moves_end, const move_s& last_move) {
-    return std::any_of(moves, moves_end, [&last_move](const auto& board) {
+    return std::find_if(moves, moves_end, [&last_move](const auto& board) {
             bool success = check_last_move(board, last_move);
             if (success) {
                 printf("\nFound requested candidate move:\n\n");
@@ -142,6 +142,11 @@ bool check_candidate_move(
             }
             return success;
         });
+}
+
+bool check_candidate_move(
+    const board_state_t* moves, const board_state_t* moves_end, const move_s& last_move) {
+    return moves_end != find_candidate_move(moves, moves_end, last_move);
 }
 
 bool all_candidate_moves_are_valid(const board_state_t* moves, const board_state_t* moves_end) {
@@ -241,9 +246,11 @@ TEST(Pawn_CandidateMoves_White_CaptureEnPassantLeft) {
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
 
     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
-    ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, E5, D6 }));
+    auto found_move = find_candidate_move(
+        c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, E5, D6 });
+    ASSERT(c_moves_end != found_move);
+    ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[D5]));
 }
-
 
 TEST(Pawn_CandidateMoves_White_CaptureEnPassantRight) {
     auto board = two_pawn_board(E5, F7);
@@ -253,5 +260,9 @@ TEST(Pawn_CandidateMoves_White_CaptureEnPassantRight) {
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
 
     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
-    ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, E5, F6 }));
+    auto found_move = find_candidate_move(
+        c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, E5, F6 });
+    ASSERT(c_moves_end != found_move);
+    ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[F5])); 
 }
+
