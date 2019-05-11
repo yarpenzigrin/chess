@@ -312,17 +312,20 @@ board_state_t* add_white_pawn_move_up(
     field_t target_field = field_up(field);
     if (FIELD_INVALID == target_field or PIECE_EMPTY != board[target_field]) return moves;
 
+    *moves = board;
     apply_move(*moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
     return moves + 1;
 }
 
 board_state_t* add_white_pawn_move_up_long(
     board_state_t* moves, const board_state_t& board, const field_t field) {
+    if (rank_t::_2 != field_rank(field)) return moves;
     field_t target_field = field_up(field);
     if (FIELD_INVALID == target_field or PIECE_EMPTY != board[target_field]) return moves;
     target_field = field_up(target_field);
     if (FIELD_INVALID == target_field or PIECE_EMPTY != board[target_field]) return moves;
 
+    *moves = board;
     apply_move(*moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
     return moves + 1;
 }
@@ -366,20 +369,20 @@ bool check_last_move(const board_state_t& board, const move_s& move) {
     field_t last_move_from = LAST_MOVE_GET_FROM(last_move);
     field_t last_move_to = LAST_MOVE_GET_TO(last_move);
 
-    printf("last_move: %x\n", last_move);
-    printf("last_move_player: %x | player: %x\n", last_move_player, move.player);
-    printf("last_move_piece: %x | piece: %x\n", last_move_piece, move.piece);
-    printf("last_move_from: %x | from: %x\n", last_move_from, move.from);
-    printf("last_move_to: %x | to: %x\n", last_move_to, move.to);
+    // printf("last_move: %x\n", last_move);
+    // printf("last_move_player: %x | player: %x\n", last_move_player, move.player);
+    // printf("last_move_piece: %x | piece: %x\n", last_move_piece, move.piece);
+    // printf("last_move_from: %x | from: %x\n", last_move_from, move.from);
+    // printf("last_move_to: %x | to: %x\n", last_move_to, move.to);
 
-    printf("meta_bits[0]: %x\n", FIELD_GET_META_BITS(board[0]));
-    printf("meta_bits[1]: %x\n", FIELD_GET_META_BITS(board[1]));
-    printf("meta_bits[2]: %x\n", FIELD_GET_META_BITS(board[2]));
-    printf("meta_bits[3]: %x\n", FIELD_GET_META_BITS(board[3]));
-    printf("meta_bits[4]: %x\n", FIELD_GET_META_BITS(board[4]));
-    printf("meta_bits[5]: %x\n", FIELD_GET_META_BITS(board[5]));
-    printf("meta_bits[6]: %x\n", FIELD_GET_META_BITS(board[6]));
-    printf("meta_bits[7]: %x\n", FIELD_GET_META_BITS(board[7]));
+    // printf("meta_bits[0]: %x\n", FIELD_GET_META_BITS(board[0]));
+    // printf("meta_bits[1]: %x\n", FIELD_GET_META_BITS(board[1]));
+    // printf("meta_bits[2]: %x\n", FIELD_GET_META_BITS(board[2]));
+    // printf("meta_bits[3]: %x\n", FIELD_GET_META_BITS(board[3]));
+    // printf("meta_bits[4]: %x\n", FIELD_GET_META_BITS(board[4]));
+    // printf("meta_bits[5]: %x\n", FIELD_GET_META_BITS(board[5]));
+    // printf("meta_bits[6]: %x\n", FIELD_GET_META_BITS(board[6]));
+    // printf("meta_bits[7]: %x\n", FIELD_GET_META_BITS(board[7]));
     return move.player == last_move_player and
         move.piece == last_move_piece and
         move.from == last_move_from and

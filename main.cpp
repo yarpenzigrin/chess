@@ -184,3 +184,12 @@ TEST(Pawn_CandidateMoves_White_MoveForward_D2D4) {
     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
     ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, D2, D4 }));
 }
+
+TEST(Pawn_CandidateMoves_White_NoMoveForward_D3D5) {
+    auto board = one_pawn_board(D3);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    ASSERT(!check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, D3, D5 }));
+}
