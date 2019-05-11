@@ -229,6 +229,9 @@ constexpr field_t LAST_MOVE_GET_TO(last_move_t last_move) {
 
 std::size_t fill_candidate_moves(board_state_t* moves, const board_state_t& board) {
     *moves = board;
+    (*moves)[E2] = FIELD_SET_PIECE((*moves)[E2], PIECE_EMPTY);
+    (*moves)[E3] = FIELD_SET_PIECE((*moves)[E3], PIECE_PAWN);
+
     last_move_t last_move = 0;
     last_move = LAST_MOVE_SET_PIECE(last_move, PIECE_PAWN);
     last_move = LAST_MOVE_SET_FROM(last_move, E2);
@@ -256,7 +259,8 @@ bool check_last_move(const board_state_t& board, piece_t piece, field_t from, fi
     // printf("meta_bits[5]: %x\n", FIELD_GET_META_BITS(board[5]));
     // printf("meta_bits[6]: %x\n", FIELD_GET_META_BITS(board[6]));
     // printf("meta_bits[7]: %x\n", FIELD_GET_META_BITS(board[7]));
-    return piece == last_move_piece and from == last_move_from and to == last_move_to;
+    return piece == last_move_piece and from == last_move_from and to == last_move_to
+        and piece == FIELD_GET_PIECE(board[to]) and PIECE_EMPTY == FIELD_GET_PIECE(board[from]);
 }
 
 }  // namespace chess
