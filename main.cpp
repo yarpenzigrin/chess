@@ -33,11 +33,11 @@ int main() {
     return 0;
 }
 
-bool check_candidate_move(const board_state_t* moves, std::size_t moves_cnt, piece_t piece,
-    field_t from, field_t to)
+bool check_candidate_move(
+    const board_state_t* moves, std::size_t moves_cnt, const last_move_s& last_move)
 {
-    return std::any_of(moves, moves + moves_cnt, [piece, from, to](const auto& board) {
-            bool success = check_last_move(board, piece, from, to);
+    return std::any_of(moves, moves + moves_cnt, [&last_move](const auto& board) {
+            bool success = check_last_move(board, last_move);
             if (success) {
                 printf("\nFound requested candidate move:\n\n");
                 gui::print_board(std::cout, board);
@@ -46,13 +46,14 @@ bool check_candidate_move(const board_state_t* moves, std::size_t moves_cnt, pie
         });
 }
 
-TEST(Internal_Meta_CheckLastMove_PawnE2E3) {
+TEST(Internal_Meta_CheckLastMove_WhitePawnE2E3) {
     auto board = chess::EMPTY_BOARD;
     // first 2 bytest of meta = last move
-    // 0001 - pawn
+    // 1 - white
+    // 001 - pawn
     // 001100 - (12) E2
     // 010100 - (20) E3
-    board[0] = 0b01000000;
+    board[0] = 0b11000000;
     board[1] = 0b00000000;
     board[2] = 0b00000000;
     board[3] = 0b11000000;
@@ -60,25 +61,34 @@ TEST(Internal_Meta_CheckLastMove_PawnE2E3) {
     board[5] = 0b00000000;
     board[6] = 0b01000000;
     board[7] = 0b01000000;
-    ASSERT(check_last_move(board, PIECE_PAWN, E2, E3));
+
+    board[E3] = 0b0000011; // white pawn on E3
+
+    ASSERT(check_last_move(board, { PLAYER_WHITE, PIECE_PAWN, E2, E3 }));
+    ASSERT(!check_last_move(board, { PLAYER_BLACK, PIECE_PAWN, E2, E3 }));
 }
 
-TEST(Internal_Meta_CheckLastMove_RookE3E2) {
+TEST(Internal_Meta_CheckLastMove_BlackRookE3E2) {
     auto board = chess::EMPTY_BOARD;
     // first 2 bytest of meta = last move
-    // 0100 - rook
+    // 0 - black
+    // 100 - rook
     // 010100 - (20) E3
     // 001100 - (12) E2
     board[0] = 0b00000000;
-    board[1] = 0b01000000;
+    board[1] = 0b10000000;
     board[2] = 0b00000000;
     board[3] = 0b01000000;
     board[4] = 0b01000000;
     board[5] = 0b00000000;
     board[6] = 0b11000000;
     board[7] = 0b00000000;
-    ASSERT(!check_last_move(board, PIECE_ROOK, E2, E3));
-    ASSERT(check_last_move(board, PIECE_ROOK, E3, E2));
+
+    board[E2] = 0b00001000; // black rook on E2
+
+    ASSERT(!check_last_move(board, { PLAYER_WHITE, PIECE_ROOK, E2, E3 }));
+    ASSERT(!check_last_move(board, { PLAYER_WHITE, PIECE_ROOK, E3, E2 }));
+    ASSERT(check_last_move(board, { PLAYER_BLACK, PIECE_ROOK, E3, E2 }));
 }
 
 TEST(Pawn_CandidateMoves_White_MoveForward) {
@@ -88,8 +98,8 @@ TEST(Pawn_CandidateMoves_White_MoveForward) {
     board[E2] = FWP;
     gui::print_board(std::cout, board);
 
-    auto candidate_moves = std::make_unique<board_state_t[]>(32);
-    auto candidate_moves_cnt = fill_candidate_moves(candidate_moves.get(), board);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    auto c_moves_cnt = fill_candidate_moves(c_moves.get(), board);
 
-    ASSERT(check_candidate_move(candidate_moves.get(), candidate_moves_cnt, PIECE_PAWN, E2, E3));
+    ASSERT(check_candidate_move(c_moves.get(), c_moves_cnt, { PLAYER_WHITE, PIECE_PAWN, E2, E3 }));
 }
