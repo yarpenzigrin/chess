@@ -604,6 +604,37 @@ board_state_t* fill_knight_candidate_moves(
     return moves;
 }
 
+board_state_t* fill_diagonal_candidate_moves_op(
+    board_state_t* moves, const board_state_t& board, const player_t player, const field_t field,
+    const piece_t piece, field_t(*operation)(const field_t)) {
+    field_t target_field = field;
+    uint8_t move_cnt = 0u;
+    do {
+        target_field = operation(target_field);
+        if (FIELD_INVALID == target_field) break;
+        if (PIECE_EMPTY == FIELD_GET_PIECE(board[target_field])) {
+            apply_move(moves[move_cnt++] = board, { player, piece, field, target_field });
+            continue;
+        }
+        if (player != FIELD_GET_PLAYER(board[target_field])) {
+            apply_move(moves[move_cnt++] = board, { player, piece, field, target_field });
+            break;
+        }
+        break;
+    } while (true);
+    return moves + move_cnt;
+}
+
+board_state_t* fill_diagonal_candidate_moves(
+    board_state_t* moves, const board_state_t& board, const player_t player, const field_t field,
+    const piece_t piece) {
+    moves = fill_diagonal_candidate_moves_op(moves, board, player, field, piece, field_left_up);
+    moves = fill_diagonal_candidate_moves_op(moves, board, player, field, piece, field_left_down);
+    moves = fill_diagonal_candidate_moves_op(moves, board, player, field, piece, field_right_up);
+    moves = fill_diagonal_candidate_moves_op(moves, board, player, field, piece, field_right_down);
+    return moves;
+}
+
 board_state_t* fill_candidate_moves(
     board_state_t* moves, const board_state_t& board, const player_t player) {
     for (uint8_t field_idx = static_cast<uint8_t>(A1);
@@ -618,6 +649,10 @@ board_state_t* fill_candidate_moves(
         }
         if (PIECE_KNIGHT == FIELD_GET_PIECE(board[field_idx])) {
             moves = fill_knight_candidate_moves(moves, board, player, field);
+            continue;
+        }
+        if (PIECE_BISHOP == FIELD_GET_PIECE(board[field_idx])) {
+            moves = fill_diagonal_candidate_moves(moves, board, player, field, PIECE_BISHOP);
             continue;
         }
     }

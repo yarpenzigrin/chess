@@ -529,3 +529,55 @@ TEST(CandidateMoves_Knight_Black_InvalidMoves_ValidMoves_Captures) {
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KNIGHT, B3, A5 }));
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KNIGHT, B3, A1 }));
 }
+
+TEST(CandidateMoves_Bishop_White_InvalidMoves_ValidMoves_Captures) {
+    auto board = three_piece_board(B3, FWB, F7, FBP, C2, FWP);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    auto white_bishop_moves = std::count_if(c_moves_beg, c_moves_end, [](const auto& board)
+        {
+            last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
+            player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
+            piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+            return PLAYER_WHITE == last_move_player and PIECE_BISHOP == last_move_piece;
+        });
+
+    temp_print_c_moves(c_moves_beg, c_moves_end);
+
+    ASSERT(6u == white_bishop_moves);
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_BISHOP, B3, A2 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_BISHOP, B3, A4 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_BISHOP, B3, C4 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_BISHOP, B3, D5 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_BISHOP, B3, E6 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_BISHOP, B3, F7 }));
+}
+
+TEST(CandidateMoves_Bishop_Black_InvalidMoves_ValidMoves_Captures) {
+    auto board = three_piece_board(B3, FBB, F7, FWP, C2, FBP);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    auto black_bishop_moves = std::count_if(c_moves_beg, c_moves_end, [](const auto& board)
+        {
+            last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
+            player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
+            piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+            return PLAYER_BLACK == last_move_player and PIECE_BISHOP == last_move_piece;
+        });
+
+    temp_print_c_moves(c_moves_beg, c_moves_end);
+
+    ASSERT(6u == black_bishop_moves);
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_BISHOP, B3, A2 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_BISHOP, B3, A4 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_BISHOP, B3, C4 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_BISHOP, B3, D5 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_BISHOP, B3, E6 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_BISHOP, B3, F7 }));
+}
