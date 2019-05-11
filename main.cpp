@@ -232,3 +232,26 @@ TEST(Pawn_CandidateMoves_White_CaptureRightUp) {
     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
     ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, E2, F3 }));
 }
+
+TEST(Pawn_CandidateMoves_White_CaptureEnPassantLeft) {
+    auto board = two_pawn_board(E5, D7);
+    apply_move(board, { PLAYER_BLACK, PIECE_PAWN, D7, D5 });
+    gui::print_board(std::cout, board);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, E5, D6 }));
+}
+
+
+TEST(Pawn_CandidateMoves_White_CaptureEnPassantRight) {
+    auto board = two_pawn_board(E5, F7);
+    apply_move(board, { PLAYER_BLACK, PIECE_PAWN, F7, F5 });
+    gui::print_board(std::cout, board);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, E5, F6 }));
+}

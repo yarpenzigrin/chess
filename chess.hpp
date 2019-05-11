@@ -305,6 +305,19 @@ struct move_s {
     field_t to;
 };
 
+bool check_last_move(const board_state_t& board, const move_s& move) {
+    last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
+    piece_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
+    piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+    field_t last_move_from = LAST_MOVE_GET_FROM(last_move);
+    field_t last_move_to = LAST_MOVE_GET_TO(last_move);
+
+    return move.player == last_move_player and
+        move.piece == last_move_piece and
+        move.from == last_move_from and
+        move.to == last_move_to;
+}
+
 void apply_move(board_state_t& board, const move_s& move) {
     board[move.from] = FIELD_SET_PIECE(board[move.from], PIECE_EMPTY);
     board[move.to] = FIELD_SET_PIECE(FIELD_SET_PLAYER(board[move.to], move.player), move.piece);
@@ -369,12 +382,46 @@ board_state_t* add_white_pawn_capture_right_up(
     return moves + 1;
 }
 
+board_state_t* add_white_pawn_capture_enpassant_left(
+    board_state_t* moves, const board_state_t& board, const field_t field) {
+    if (rank_t::_5 != field_rank(field)) return moves;
+
+    field_t target_field = field_left_up(field);
+    field_t opps_move_from = field_up(target_field);
+    field_t opps_move_to = field_down(target_field);
+    if (!check_last_move(board, { PLAYER_BLACK, PIECE_PAWN, opps_move_from, opps_move_to }))
+        return moves;
+
+    *moves = board;
+    (*moves)[opps_move_to] = FIELD_SET_PIECE((*moves)[opps_move_to], PIECE_EMPTY);
+    apply_move(*moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
+    return moves + 1;
+}
+
+board_state_t* add_white_pawn_capture_enpassant_right(
+    board_state_t* moves, const board_state_t& board, const field_t field) {
+    if (rank_t::_5 != field_rank(field)) return moves;
+
+    field_t target_field = field_right_up(field);
+    field_t opps_move_from = field_up(target_field);
+    field_t opps_move_to = field_down(target_field);
+    if (!check_last_move(board, { PLAYER_BLACK, PIECE_PAWN, opps_move_from, opps_move_to }))
+        return moves;
+
+    *moves = board;
+    (*moves)[opps_move_to] = FIELD_SET_PIECE((*moves)[opps_move_to], PIECE_EMPTY);
+    apply_move(*moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
+    return moves + 1;
+}
+
 board_state_t* fill_white_pawn_candidate_moves(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     moves = add_white_pawn_move_up(moves, board, field);
     moves = add_white_pawn_move_up_long(moves, board, field);
     moves = add_white_pawn_capture_left_up(moves, board, field);
     moves = add_white_pawn_capture_right_up(moves, board, field);
+    moves = add_white_pawn_capture_enpassant_left(moves, board, field);
+    moves = add_white_pawn_capture_enpassant_right(moves, board, field);
     return moves;
 }
 
@@ -403,33 +450,6 @@ board_state_t* fill_candidate_moves(
         }
     }
     return moves;
-}
-
-bool check_last_move(const board_state_t& board, const move_s& move) {
-    last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
-    piece_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
-    piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
-    field_t last_move_from = LAST_MOVE_GET_FROM(last_move);
-    field_t last_move_to = LAST_MOVE_GET_TO(last_move);
-
-    // printf("last_move: %x\n", last_move);
-    // printf("last_move_player: %x | player: %x\n", last_move_player, move.player);
-    // printf("last_move_piece: %x | piece: %x\n", last_move_piece, move.piece);
-    // printf("last_move_from: %x | from: %x\n", last_move_from, move.from);
-    // printf("last_move_to: %x | to: %x\n", last_move_to, move.to);
-
-    // printf("meta_bits[0]: %x\n", FIELD_GET_META_BITS(board[0]));
-    // printf("meta_bits[1]: %x\n", FIELD_GET_META_BITS(board[1]));
-    // printf("meta_bits[2]: %x\n", FIELD_GET_META_BITS(board[2]));
-    // printf("meta_bits[3]: %x\n", FIELD_GET_META_BITS(board[3]));
-    // printf("meta_bits[4]: %x\n", FIELD_GET_META_BITS(board[4]));
-    // printf("meta_bits[5]: %x\n", FIELD_GET_META_BITS(board[5]));
-    // printf("meta_bits[6]: %x\n", FIELD_GET_META_BITS(board[6]));
-    // printf("meta_bits[7]: %x\n", FIELD_GET_META_BITS(board[7]));
-    return move.player == last_move_player and
-        move.piece == last_move_piece and
-        move.from == last_move_from and
-        move.to == last_move_to;
 }
 
 bool validate_board_state(const board_state_t& board)
