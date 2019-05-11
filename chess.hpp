@@ -288,6 +288,16 @@ constexpr field_t field_right(const field_t field) {
         static_cast<uint8_t>(field_file(field)) + 1, static_cast<uint8_t>(field_rank(field)));
 }
 
+constexpr field_t field_left_up(const field_t field) {
+    return make_field(
+        static_cast<uint8_t>(field_file(field)) - 1, static_cast<uint8_t>(field_rank(field)) + 1);
+}
+
+constexpr field_t field_right_up(const field_t field) {
+    return make_field(
+        static_cast<uint8_t>(field_file(field)) + 1, static_cast<uint8_t>(field_rank(field)) + 1);
+}
+
 struct move_s {
     player_t player;
     piece_t piece;
@@ -310,7 +320,8 @@ void apply_move(board_state_t& board, const move_s& move) {
 board_state_t* add_white_pawn_move_up(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     field_t target_field = field_up(field);
-    if (FIELD_INVALID == target_field or PIECE_EMPTY != board[target_field]) return moves;
+    if (FIELD_INVALID == target_field or PIECE_EMPTY != FIELD_GET_PIECE(board[target_field]))
+        return moves;
 
     *moves = board;
     apply_move(*moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
@@ -321,9 +332,37 @@ board_state_t* add_white_pawn_move_up_long(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     if (rank_t::_2 != field_rank(field)) return moves;
     field_t target_field = field_up(field);
-    if (FIELD_INVALID == target_field or PIECE_EMPTY != board[target_field]) return moves;
+    if (FIELD_INVALID == target_field or PIECE_EMPTY != FIELD_GET_PIECE(board[target_field]))
+        return moves;
     target_field = field_up(target_field);
-    if (FIELD_INVALID == target_field or PIECE_EMPTY != board[target_field]) return moves;
+    if (FIELD_INVALID == target_field or PIECE_EMPTY != FIELD_GET_PIECE(board[target_field]))
+        return moves;
+
+    *moves = board;
+    apply_move(*moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
+    return moves + 1;
+}
+
+board_state_t* add_white_pawn_capture_left_up(
+    board_state_t* moves, const board_state_t& board, const field_t field) {
+    field_t target_field = field_left_up(field);
+    if (FIELD_INVALID == target_field or
+        PIECE_EMPTY == FIELD_GET_PIECE(board[target_field]) or
+        PLAYER_BLACK != FIELD_GET_PLAYER(board[target_field]))
+        return moves;
+
+    *moves = board;
+    apply_move(*moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
+    return moves + 1;
+}
+
+board_state_t* add_white_pawn_capture_right_up(
+    board_state_t* moves, const board_state_t& board, const field_t field) {
+    field_t target_field = field_right_up(field);
+    if (FIELD_INVALID == target_field or
+        PIECE_EMPTY == FIELD_GET_PIECE(board[target_field]) or
+        PLAYER_BLACK != FIELD_GET_PLAYER(board[target_field]))
+        return moves;
 
     *moves = board;
     apply_move(*moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
@@ -334,6 +373,8 @@ board_state_t* fill_white_pawn_candidate_moves(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     moves = add_white_pawn_move_up(moves, board, field);
     moves = add_white_pawn_move_up_long(moves, board, field);
+    moves = add_white_pawn_capture_left_up(moves, board, field);
+    moves = add_white_pawn_capture_right_up(moves, board, field);
     return moves;
 }
 
@@ -354,6 +395,8 @@ board_state_t* fill_candidate_moves(
     for (uint8_t field_idx = static_cast<uint8_t>(A1);
          field_idx < static_cast<uint8_t>(FIELD_INVALID);
          ++field_idx) {
+        if (player != FIELD_GET_PLAYER(board[field_idx])) continue;
+
         field_t field = static_cast<field_t>(field_idx);
         if (PIECE_PAWN == FIELD_GET_PIECE(board[field_idx])) {
             moves = fill_pawn_candidate_moves(moves, board, player, field);
