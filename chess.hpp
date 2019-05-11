@@ -142,7 +142,8 @@ enum field_t
     A5, B5, C5, D5, E5, F5, G5, H5,
     A6, B6, C6, D6, E6, F6, G6, H6,
     A7, B7, C7, D7, E7, F7, G7, H7,
-    A8, B8, C8, D8, E8, F8, G8, H8
+    A8, B8, C8, D8, E8, F8, G8, H8,
+    FIELD_INVALID
 };
 
 template <typename T>
@@ -238,8 +239,57 @@ constexpr field_t LAST_MOVE_GET_TO(last_move_t last_move) {
     return static_cast<field_t>((last_move & LAST_MOVE_TO_MASK) >> LAST_MOVE_TO_POS);
 }
 
+enum class file_t {
+    A = 0, B, C, D, E, F, G, H, file_t_max
+};
+
+enum class rank_t {
+    _1 = 0, _2, _3, _4, _5, _6, _7, _8, rank_t_max
+};
+
+constexpr file_t field_file(const field_t field) {
+    return field != FIELD_INVALID
+        ? static_cast<file_t>(
+            static_cast<uint8_t>(field) % static_cast<uint8_t>(file_t::file_t_max))
+        : file_t::file_t_max;
+}
+
+constexpr rank_t field_rank(const field_t field) {
+    return field != FIELD_INVALID
+        ? static_cast<rank_t>(
+            static_cast<uint8_t>(field) / static_cast<uint8_t>(rank_t::rank_t_max))
+        : rank_t::rank_t_max;
+}
+
+constexpr field_t make_field(const uint8_t file, const uint8_t rank) {
+    return (static_cast<uint8_t>(file_t::file_t_max) <= file or
+        static_cast<uint8_t>(rank_t::rank_t_max) <= rank)
+        ? FIELD_INVALID
+        : static_cast<field_t>(rank * static_cast<uint8_t>(rank_t::rank_t_max) + file);
+}
+
+constexpr field_t field_up(const field_t field) {
+    return make_field(
+        static_cast<uint8_t>(field_file(field)), static_cast<uint8_t>(field_rank(field)) + 1);
+}
+
+constexpr field_t field_down(const field_t field) {
+    return make_field(
+        static_cast<uint8_t>(field_file(field)), static_cast<uint8_t>(field_rank(field)) - 1);
+}
+
+constexpr field_t field_left(const field_t field) {
+    return make_field(
+        static_cast<uint8_t>(field_file(field)) - 1, static_cast<uint8_t>(field_rank(field)));
+}
+
+constexpr field_t field_right(const field_t field) {
+    return make_field(
+        static_cast<uint8_t>(field_file(field)) + 1, static_cast<uint8_t>(field_rank(field)));
+}
+
 std::size_t fill_candidate_moves(
-    board_state_t* moves, const board_state_t& board, player_t player) {
+    board_state_t* moves, const board_state_t& board, const player_t player) {
     *moves = board;
     auto& move1 = moves[0];
     move1[E2] = FIELD_SET_PIECE(move1[E2], PIECE_EMPTY);

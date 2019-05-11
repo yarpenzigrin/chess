@@ -3,6 +3,7 @@
 #include <vector>
 #include <functional>
 #include <exception>
+#include <algorithm>
 #include "chess_tty_gui.hpp"
 
 using namespace chess;
@@ -44,6 +45,32 @@ int main() {
             printf(" * %s\n", failed_test);
     }
     return 0;
+}
+
+TEST(Internal_StaticEvaluation_FieldProperties) {
+    static_assert(file_t::file_t_max == field_file(FIELD_INVALID),
+        "Unknown file for invalid field");
+    static_assert(rank_t::rank_t_max == field_rank(FIELD_INVALID),
+        "Unknown rank for invalid field");
+    static_assert(file_t::A == field_file(A4), "A-file for field A4");
+    static_assert(file_t::H == field_file(H8), "H-file for field H8");
+    static_assert(rank_t::_4 == field_rank(A4), "4th-rank for field A4");
+    static_assert(rank_t::_8 == field_rank(H8), "8th-rank for field H8");
+    static_assert(FIELD_INVALID == make_field(150, 0), "(150,0) results in invalid field");
+    static_assert(FIELD_INVALID == make_field(3, 69), "(3,69) results in invalid field");
+    static_assert(A4 == make_field(0, 3), "(0,3) results in field A4");
+    static_assert(H8 == make_field(7, 7), "(7,7) results in field H8");
+}
+
+TEST(Internal_StaticEvaluation_FieldGeneration) {
+    static_assert(D5 == field_up(D4), "D4 --UP--> D5");
+    static_assert(D3 == field_down(D4), "D4 --DOWN--> D3");
+    static_assert(C4 == field_left(D4), "D4 --LEFT--> C4");
+    static_assert(E4 == field_right(D4), "D4 --RIGHT--> E4");
+    static_assert(FIELD_INVALID == field_up(H8), "H8 --UP--> invalid field");
+    static_assert(FIELD_INVALID == field_right(H8), "H8 --RIGHT--> invalid field");
+    static_assert(FIELD_INVALID == field_down(A1), "A1 --DOWN--> invalid field");
+    static_assert(FIELD_INVALID == field_left(A1), "A1 --LEFT--> invalid field");
 }
 
 TEST(Internal_Meta_CheckLastMove_WhitePawnE2E3) {
@@ -139,3 +166,12 @@ TEST(Pawn_CandidateMoves_White_MoveLongForward_E2E4) {
     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_cnt));
     ASSERT(check_candidate_move(c_moves.get(), c_moves_cnt, { PLAYER_WHITE, PIECE_PAWN, E2, E4 }));
 }
+
+// TEST(Pawn_CandidateMoves_White_MoveForward_D2D3) {
+//     auto board = one_pawn_board(D2);
+//     auto c_moves = std::make_unique<board_state_t[]>(32);
+//     auto c_moves_cnt = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+
+//     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_cnt));
+//     ASSERT(check_candidate_move(c_moves.get(), c_moves_cnt, { PLAYER_WHITE, PIECE_PAWN, D2, D3 }));
+// }
