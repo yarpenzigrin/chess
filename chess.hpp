@@ -569,6 +569,41 @@ board_state_t* fill_pawn_candidate_moves(
         : fill_black_pawn_candidate_moves(moves, board, field);
 }
 
+board_state_t* fill_knight_candidate_move(
+    board_state_t* moves, const board_state_t& board, const player_t player,
+    const field_t field, const field_t target_field) {
+    printf("tralalala\n");
+    if (FIELD_INVALID == target_field or
+        (player == FIELD_GET_PLAYER(board[target_field]) and
+         PIECE_EMPTY != FIELD_GET_PIECE(board[target_field])))
+        return moves;
+    printf("trolololo\n");
+
+    apply_move(*moves = board, { player, PIECE_KNIGHT, field, target_field });
+    return moves + 1;
+}
+
+board_state_t* fill_knight_candidate_moves(
+    board_state_t* moves, const board_state_t& board, const player_t player, const field_t field) {
+    moves = fill_knight_candidate_move(
+        moves, board, player, field, field_up(field_left_up(field)));
+    moves = fill_knight_candidate_move(
+        moves, board, player, field, field_up(field_right_up(field)));
+    moves = fill_knight_candidate_move(
+        moves, board, player, field, field_left(field_left_up(field)));
+    moves = fill_knight_candidate_move(
+        moves, board, player, field, field_left(field_left_down(field)));
+    moves = fill_knight_candidate_move(
+        moves, board, player, field, field_down(field_left_down(field)));
+    moves = fill_knight_candidate_move(
+        moves, board, player, field, field_down(field_right_down(field)));
+    moves = fill_knight_candidate_move(
+        moves, board, player, field, field_right(field_right_up(field)));
+    moves = fill_knight_candidate_move(
+        moves, board, player, field, field_right(field_right_down(field)));
+    return moves;
+}
+
 board_state_t* fill_candidate_moves(
     board_state_t* moves, const board_state_t& board, const player_t player) {
     for (uint8_t field_idx = static_cast<uint8_t>(A1);
@@ -579,6 +614,11 @@ board_state_t* fill_candidate_moves(
         field_t field = static_cast<field_t>(field_idx);
         if (PIECE_PAWN == FIELD_GET_PIECE(board[field_idx])) {
             moves = fill_pawn_candidate_moves(moves, board, player, field);
+            continue;
+        }
+        if (PIECE_KNIGHT == FIELD_GET_PIECE(board[field_idx])) {
+            moves = fill_knight_candidate_moves(moves, board, player, field);
+            continue;
         }
     }
     return moves;
@@ -587,7 +627,7 @@ board_state_t* fill_candidate_moves(
 bool validate_board_state(const board_state_t& board)
 {
     last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
-    piece_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
+    player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
     piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
     field_t last_move_from = LAST_MOVE_GET_FROM(last_move);
     field_t last_move_to = LAST_MOVE_GET_TO(last_move);

@@ -47,6 +47,11 @@ int main() {
     return 0;
 }
 
+static void temp_print_c_moves(const board_state_t* c_moves_beg, const board_state_t* c_moves_end) {
+    for (auto it = c_moves_beg; it != c_moves_end; ++it)
+        gui::print_board(std::cout, *it);
+}
+
 TEST(Internal_StaticEvaluation_FieldProperties) {
     static_assert(file_t::file_t_max == field_file(FIELD_INVALID),
         "Unknown file for invalid field");
@@ -160,7 +165,7 @@ bool all_candidate_moves_are_valid(const board_state_t* moves, const board_state
         });
 }
 
-TEST(Pawn_CandidateMoves_White_MoveForward_E2E3) {
+TEST(CandidateMoves_Pawn_White_MoveForward_E2E3) {
     auto board = one_pawn_board(E2);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
@@ -169,7 +174,7 @@ TEST(Pawn_CandidateMoves_White_MoveForward_E2E3) {
     ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, E2, E3 }));
 }
 
-TEST(Pawn_CandidateMoves_Black_MoveForward_E7E6) {
+TEST(CandidateMoves_Pawn_Black_MoveForward_E7E6) {
     auto board = one_pawn_board(E7, FBP);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
@@ -178,7 +183,7 @@ TEST(Pawn_CandidateMoves_Black_MoveForward_E7E6) {
     ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_BLACK, PIECE_PAWN, E7, E6 }));
 }
 
-TEST(Pawn_CandidateMoves_White_MoveLongForward_E2E4) {
+TEST(CandidateMoves_Pawn_White_MoveLongForward_E2E4) {
     auto board = one_pawn_board(E2);
 
     auto c_moves = std::make_unique<board_state_t[]>(32);
@@ -188,7 +193,7 @@ TEST(Pawn_CandidateMoves_White_MoveLongForward_E2E4) {
     ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, E2, E4 }));
 }
 
-TEST(Pawn_CandidateMoves_Black_MoveLongForward_E7E5) {
+TEST(CandidateMoves_Pawn_Black_MoveLongForward_E7E5) {
     auto board = one_pawn_board(E7, FBP);
 
     auto c_moves = std::make_unique<board_state_t[]>(32);
@@ -198,7 +203,7 @@ TEST(Pawn_CandidateMoves_Black_MoveLongForward_E7E5) {
     ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_BLACK, PIECE_PAWN, E7, E5 }));
 }
 
-TEST(Pawn_CandidateMoves_White_MoveForward_D2D3) {
+TEST(CandidateMoves_Pawn_White_MoveForward_D2D3) {
     auto board = one_pawn_board(D2);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
@@ -207,7 +212,7 @@ TEST(Pawn_CandidateMoves_White_MoveForward_D2D3) {
     ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, D2, D3 }));
 }
 
-TEST(Pawn_CandidateMoves_Black_MoveForward_D7DD6) {
+TEST(CandidateMoves_Pawn_Black_MoveForward_D7DD6) {
     auto board = one_pawn_board(D7, FBP);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
@@ -216,7 +221,7 @@ TEST(Pawn_CandidateMoves_Black_MoveForward_D7DD6) {
     ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_BLACK, PIECE_PAWN, D7, D6 }));
 }
 
-TEST(Pawn_CandidateMoves_White_MoveForward_D2D4) {
+TEST(CandidateMoves_Pawn_White_MoveForward_D2D4) {
     auto board = one_pawn_board(D2);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
@@ -225,7 +230,7 @@ TEST(Pawn_CandidateMoves_White_MoveForward_D2D4) {
     ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, D2, D4 }));
 }
 
-TEST(Pawn_CandidateMoves_Black_MoveForward_D7D5) {
+TEST(CandidateMoves_Pawn_Black_MoveForward_D7D5) {
     auto board = one_pawn_board(D7, FBP);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
@@ -234,7 +239,7 @@ TEST(Pawn_CandidateMoves_Black_MoveForward_D7D5) {
     ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_BLACK, PIECE_PAWN, D7, D5 }));
 }
 
-TEST(Pawn_CandidateMoves_White_NoMoveForwardLong_D3D5) {
+TEST(CandidateMoves_Pawn_White_NoMoveForwardLong_D3D5) {
     auto board = one_pawn_board(D3);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
@@ -243,7 +248,7 @@ TEST(Pawn_CandidateMoves_White_NoMoveForwardLong_D3D5) {
     ASSERT(!check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, D3, D5 }));
 }
 
-TEST(Pawn_CandidateMoves_Black_NoMoveForwardLong_D6D4) {
+TEST(CandidateMoves_Pawn_Black_NoMoveForwardLong_D6D4) {
     auto board = one_pawn_board(D6, FBP);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
@@ -262,7 +267,7 @@ auto two_pawn_board(const field_t white_pawn_position, const field_t black_pawn_
     return board;
 }
 
-TEST(Pawn_CandidateMoves_White_NoMoveForwardBlocked_D2D3) {
+TEST(CandidateMoves_Pawn_White_NoMoveForwardBlocked_D2D3) {
     auto board = two_pawn_board(D2, D3);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
@@ -271,7 +276,7 @@ TEST(Pawn_CandidateMoves_White_NoMoveForwardBlocked_D2D3) {
     ASSERT(!check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, D2, D3 }));
 }
 
-TEST(Pawn_CandidateMoves_Black_NoMoveForwardBlocked_D7D6) {
+TEST(CandidateMoves_Pawn_Black_NoMoveForwardBlocked_D7D6) {
     auto board = two_pawn_board(D6, D7);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
@@ -280,7 +285,7 @@ TEST(Pawn_CandidateMoves_Black_NoMoveForwardBlocked_D7D6) {
     ASSERT(!check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_BLACK, PIECE_PAWN, D7, D6 }));
 }
 
-TEST(Pawn_CandidateMoves_White_NoMoveForwardLongBlockedClose_D2D3) {
+TEST(CandidateMoves_Pawn_White_NoMoveForwardLongBlockedClose_D2D3) {
     auto board = two_pawn_board(D2, D3);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
@@ -289,7 +294,7 @@ TEST(Pawn_CandidateMoves_White_NoMoveForwardLongBlockedClose_D2D3) {
     ASSERT(!check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, D2, D4 }));
 }
 
-TEST(Pawn_CandidateMoves_Black_NoMoveForwardLongBlockedClose_D7D5) {
+TEST(CandidateMoves_Pawn_Black_NoMoveForwardLongBlockedClose_D7D5) {
     auto board = two_pawn_board(D6, D7);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
@@ -298,7 +303,7 @@ TEST(Pawn_CandidateMoves_Black_NoMoveForwardLongBlockedClose_D7D5) {
     ASSERT(!check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_BLACK, PIECE_PAWN, D7, D5 }));
 }
 
-TEST(Pawn_CandidateMoves_White_NoMoveForwardLongBlockedFar_D2D3) {
+TEST(CandidateMoves_Pawn_White_NoMoveForwardLongBlockedFar_D2D3) {
     auto board = two_pawn_board(D2, D4);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
@@ -307,7 +312,7 @@ TEST(Pawn_CandidateMoves_White_NoMoveForwardLongBlockedFar_D2D3) {
     ASSERT(!check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, D2, D4 }));
 }
 
-TEST(Pawn_CandidateMoves_Black_NoMoveForwardLongBlockedFar_D7D5) {
+TEST(CandidateMoves_Pawn_Black_NoMoveForwardLongBlockedFar_D7D5) {
     auto board = two_pawn_board(D5, D7);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
@@ -316,7 +321,7 @@ TEST(Pawn_CandidateMoves_Black_NoMoveForwardLongBlockedFar_D7D5) {
     ASSERT(!check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_BLACK, PIECE_PAWN, D7, D5 }));
 }
 
-TEST(Pawn_CandidateMoves_White_CaptureLeftUp) {
+TEST(CandidateMoves_Pawn_White_CaptureLeftUp) {
     auto board = two_pawn_board(E2, D3);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
@@ -325,7 +330,7 @@ TEST(Pawn_CandidateMoves_White_CaptureLeftUp) {
     ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, E2, D3 }));
 }
 
-TEST(Pawn_CandidateMoves_White_CaptureRightUp) {
+TEST(CandidateMoves_Pawn_White_CaptureRightUp) {
     auto board = two_pawn_board(E2, F3);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
@@ -334,7 +339,7 @@ TEST(Pawn_CandidateMoves_White_CaptureRightUp) {
     ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, E2, F3 }));
 }
 
-TEST(Pawn_CandidateMoves_Black_CaptureLeftDown) {
+TEST(CandidateMoves_Pawn_Black_CaptureLeftDown) {
     auto board = two_pawn_board(E2, F3);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
@@ -343,7 +348,7 @@ TEST(Pawn_CandidateMoves_Black_CaptureLeftDown) {
     ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_BLACK, PIECE_PAWN, F3, E2 }));
 }
 
-TEST(Pawn_CandidateMoves_Black_CaptureRightDown) {
+TEST(CandidateMoves_Pawn_Black_CaptureRightDown) {
     auto board = two_pawn_board(E2, D3);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
@@ -352,7 +357,7 @@ TEST(Pawn_CandidateMoves_Black_CaptureRightDown) {
     ASSERT(check_candidate_move(c_moves.get(), c_moves_end, { PLAYER_BLACK, PIECE_PAWN, D3, E2 }));
 }
 
-TEST(Pawn_CandidateMoves_White_CaptureEnPassantLeft) {
+TEST(CandidateMoves_Pawn_White_CaptureEnPassantLeft) {
     auto board = two_pawn_board(E5, D7);
     apply_move(board, { PLAYER_BLACK, PIECE_PAWN, D7, D5 });
     gui::print_board(std::cout, board);
@@ -366,7 +371,7 @@ TEST(Pawn_CandidateMoves_White_CaptureEnPassantLeft) {
     ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[D5]));
 }
 
-TEST(Pawn_CandidateMoves_White_CaptureEnPassantRight) {
+TEST(CandidateMoves_Pawn_White_CaptureEnPassantRight) {
     auto board = two_pawn_board(E5, F7);
     apply_move(board, { PLAYER_BLACK, PIECE_PAWN, F7, F5 });
     gui::print_board(std::cout, board);
@@ -380,7 +385,7 @@ TEST(Pawn_CandidateMoves_White_CaptureEnPassantRight) {
     ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[F5])); 
 }
 
-TEST(Pawn_CandidateMoves_Black_CaptureEnPassantLeft) {
+TEST(CandidateMoves_Pawn_Black_CaptureEnPassantLeft) {
     auto board = two_pawn_board(E2, F4);
     apply_move(board, { PLAYER_WHITE, PIECE_PAWN, E2, E4 });
     gui::print_board(std::cout, board);
@@ -394,7 +399,7 @@ TEST(Pawn_CandidateMoves_Black_CaptureEnPassantLeft) {
     ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[E4]));
 }
 
-TEST(Pawn_CandidateMoves_Black_CaptureEnPassantRight) {
+TEST(CandidateMoves_Pawn_Black_CaptureEnPassantRight) {
     auto board = two_pawn_board(E2, D4);
     apply_move(board, { PLAYER_WHITE, PIECE_PAWN, E2, E4 });
     gui::print_board(std::cout, board);
@@ -408,7 +413,7 @@ TEST(Pawn_CandidateMoves_Black_CaptureEnPassantRight) {
     ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[E4])); 
 }
 
-TEST(Pawn_CandidateMoves_White_MoveForward_Queening) {
+TEST(CandidateMoves_Pawn_White_MoveForward_Queening) {
     auto board = one_pawn_board(A7);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
@@ -436,7 +441,7 @@ TEST(Pawn_CandidateMoves_White_MoveForward_Queening) {
         std::find(transformed_pieces.begin(), transformed_pieces.end(), PIECE_QUEEN));
 }
 
-TEST(Pawn_CandidateMoves_Black_MoveForward_Queening) {
+TEST(CandidateMoves_Pawn_Black_MoveForward_Queening) {
     auto board = one_pawn_board(A2, FBP);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
@@ -462,4 +467,65 @@ TEST(Pawn_CandidateMoves_Black_MoveForward_Queening) {
         std::find(transformed_pieces.begin(), transformed_pieces.end(), PIECE_ROOK));
     ASSERT(transformed_pieces.end() !=
         std::find(transformed_pieces.begin(), transformed_pieces.end(), PIECE_QUEEN));
+}
+
+auto three_piece_board(
+    const field_t piece1_pos, const field_state_t piece1,
+    const field_t piece2_pos, const field_state_t piece2,
+    const field_t piece3_pos, const field_state_t piece3) {
+    auto board = chess::EMPTY_BOARD;
+    board[H1] = FWK;
+    board[H8] = FBK;
+    board[piece1_pos] = piece1;
+    board[piece2_pos] = piece2;
+    board[piece3_pos] = piece3;
+    gui::print_board(std::cout, board);
+    return board;
+}
+
+TEST(CandidateMoves_Knight_White_InvalidMoves_ValidMoves_Captures) {
+    auto board = three_piece_board(B3, FWN, C5, FBP, D4, FWP);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    auto white_knigth_moves = std::count_if(c_moves_beg, c_moves_end, [](const auto& board)
+        {
+            last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
+            player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
+            piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+            return PLAYER_WHITE == last_move_player and PIECE_KNIGHT == last_move_piece;
+        });
+    ASSERT(5u == white_knigth_moves);
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KNIGHT, B3, C1 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KNIGHT, B3, D2 }));
+    ASSERT(!check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KNIGHT, B3, D4 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KNIGHT, B3, C5 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KNIGHT, B3, A5 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KNIGHT, B3, A1 }));
+}
+
+TEST(CandidateMoves_Knight_Black_InvalidMoves_ValidMoves_Captures) {
+    auto board = three_piece_board(B3, FBN, C5, FBP, D4, FWP);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    auto black_knigth_moves = std::count_if(c_moves_beg, c_moves_end, [](const auto& board)
+        {
+            last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
+            player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
+            piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+            return PLAYER_BLACK == last_move_player and PIECE_KNIGHT == last_move_piece;
+        });
+
+    ASSERT(5u == black_knigth_moves);
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KNIGHT, B3, C1 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KNIGHT, B3, D2 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KNIGHT, B3, D4 }));
+    ASSERT(!check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KNIGHT, B3, C5 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KNIGHT, B3, A5 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KNIGHT, B3, A1 }));
 }
