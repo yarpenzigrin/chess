@@ -581,3 +581,63 @@ TEST(CandidateMoves_Bishop_Black_InvalidMoves_ValidMoves_Captures) {
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_BISHOP, B3, E6 }));
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_BISHOP, B3, F7 }));
 }
+
+TEST(CandidateMoves_Rook_White_InvalidMoves_ValidMoves_Captures) {
+    auto board = three_piece_board(C5, FWR, C7, FWP, F5, FBP);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    auto white_rook_moves = std::count_if(c_moves_beg, c_moves_end, [](const auto& board)
+        {
+            last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
+            player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
+            piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+            return PLAYER_WHITE == last_move_player and PIECE_ROOK == last_move_piece;
+        });
+
+    temp_print_c_moves(c_moves_beg, c_moves_end);
+
+    ASSERT(10u == white_rook_moves);
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_ROOK, C5, B5 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_ROOK, C5, A5 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_ROOK, C5, C4 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_ROOK, C5, C3 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_ROOK, C5, C2 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_ROOK, C5, C1 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_ROOK, C5, C6 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_ROOK, C5, D5 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_ROOK, C5, E5 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_ROOK, C5, F5 }));
+}
+
+TEST(CandidateMoves_Rook_Black_InvalidMoves_ValidMoves_Captures) {
+    auto board = three_piece_board(C5, FBR, C7, FBP, F5, FWP);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    auto black_rook_moves = std::count_if(c_moves_beg, c_moves_end, [](const auto& board)
+        {
+            last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
+            player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
+            piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+            return PLAYER_BLACK == last_move_player and PIECE_ROOK == last_move_piece;
+        });
+
+    temp_print_c_moves(c_moves_beg, c_moves_end);
+
+    ASSERT(10u == black_rook_moves);
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_ROOK, C5, B5 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_ROOK, C5, A5 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_ROOK, C5, C4 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_ROOK, C5, C3 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_ROOK, C5, C2 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_ROOK, C5, C1 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_ROOK, C5, C6 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_ROOK, C5, D5 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_ROOK, C5, E5 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_ROOK, C5, F5 }));
+}

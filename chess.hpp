@@ -604,7 +604,7 @@ board_state_t* fill_knight_candidate_moves(
     return moves;
 }
 
-board_state_t* fill_diagonal_candidate_moves_op(
+board_state_t* fill_ranged_candidate_moves_op(
     board_state_t* moves, const board_state_t& board, const player_t player, const field_t field,
     const piece_t piece, field_t(*operation)(const field_t)) {
     field_t target_field = field;
@@ -628,10 +628,20 @@ board_state_t* fill_diagonal_candidate_moves_op(
 board_state_t* fill_diagonal_candidate_moves(
     board_state_t* moves, const board_state_t& board, const player_t player, const field_t field,
     const piece_t piece) {
-    moves = fill_diagonal_candidate_moves_op(moves, board, player, field, piece, field_left_up);
-    moves = fill_diagonal_candidate_moves_op(moves, board, player, field, piece, field_left_down);
-    moves = fill_diagonal_candidate_moves_op(moves, board, player, field, piece, field_right_up);
-    moves = fill_diagonal_candidate_moves_op(moves, board, player, field, piece, field_right_down);
+    moves = fill_ranged_candidate_moves_op(moves, board, player, field, piece, field_left_up);
+    moves = fill_ranged_candidate_moves_op(moves, board, player, field, piece, field_left_down);
+    moves = fill_ranged_candidate_moves_op(moves, board, player, field, piece, field_right_up);
+    moves = fill_ranged_candidate_moves_op(moves, board, player, field, piece, field_right_down);
+    return moves;
+}
+
+board_state_t* fill_cross_candidate_moves(
+    board_state_t* moves, const board_state_t& board, const player_t player, const field_t field,
+    const piece_t piece) {
+    moves = fill_ranged_candidate_moves_op(moves, board, player, field, piece, field_up);
+    moves = fill_ranged_candidate_moves_op(moves, board, player, field, piece, field_down);
+    moves = fill_ranged_candidate_moves_op(moves, board, player, field, piece, field_right);
+    moves = fill_ranged_candidate_moves_op(moves, board, player, field, piece, field_left);
     return moves;
 }
 
@@ -643,16 +653,21 @@ board_state_t* fill_candidate_moves(
         if (player != FIELD_GET_PLAYER(board[field_idx])) continue;
 
         field_t field = static_cast<field_t>(field_idx);
-        if (PIECE_PAWN == FIELD_GET_PIECE(board[field_idx])) {
+        piece_t piece = FIELD_GET_PIECE(board[field_idx]);
+        if (PIECE_PAWN == piece) {
             moves = fill_pawn_candidate_moves(moves, board, player, field);
             continue;
         }
-        if (PIECE_KNIGHT == FIELD_GET_PIECE(board[field_idx])) {
+        if (PIECE_KNIGHT == piece) {
             moves = fill_knight_candidate_moves(moves, board, player, field);
             continue;
         }
-        if (PIECE_BISHOP == FIELD_GET_PIECE(board[field_idx])) {
-            moves = fill_diagonal_candidate_moves(moves, board, player, field, PIECE_BISHOP);
+        if (PIECE_BISHOP == piece) {
+            moves = fill_diagonal_candidate_moves(moves, board, player, field, piece);
+            continue;
+        }
+        if (PIECE_ROOK == piece) {
+            moves = fill_cross_candidate_moves(moves, board, player, field, piece);
             continue;
         }
     }
