@@ -1,3 +1,3 @@
 #!/usr/bin/bash
 
-g++ -std=c++17 main.cpp && ./a.out
+g++ -std=c++14 main.cpp && ./a.out
