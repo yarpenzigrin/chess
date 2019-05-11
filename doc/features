@@ -1,0 +1,52 @@
+1. Candidate moves
+
+1.1 pawn
+
+- forward 1
+- forward 2
+- capture left
+- capture right
+- capture en passant left
+- capture en passant right
+- queening
+
+1.2 knight
+
+- l-move
+- capture
+
+1.3 bishop
+
+- move-diag
+- capture
+
+1.4 rook
+
+- move-horizontally
+- move-vertiaclly
+- capture
+
+1.5 queen
+
+- move-diag
+- move-horizontally
+- move-vertically
+- capture
+
+1.6 king
+
+- move
+- short castle
+- long castle
+
+3. Checks
+
+- check
+- check mate
+
+4. Draws
+
+- stalemate
+- 3-fold repetition
+- insufficient material
+- 50 move rule
