@@ -298,6 +298,16 @@ constexpr field_t field_right_up(const field_t field) {
         static_cast<uint8_t>(field_file(field)) + 1, static_cast<uint8_t>(field_rank(field)) + 1);
 }
 
+constexpr field_t field_left_down(const field_t field) {
+    return make_field(
+        static_cast<uint8_t>(field_file(field)) - 1, static_cast<uint8_t>(field_rank(field)) - 1);
+}
+
+constexpr field_t field_right_down(const field_t field) {
+    return make_field(
+        static_cast<uint8_t>(field_file(field)) + 1, static_cast<uint8_t>(field_rank(field)) - 1);
+}
+
 struct move_s {
     player_t player;
     piece_t piece;
@@ -369,8 +379,7 @@ board_state_t* add_white_pawn_move_up_long(
     if (FIELD_INVALID == target_field or PIECE_EMPTY != FIELD_GET_PIECE(board[target_field]))
         return moves;
 
-    *moves = board;
-    apply_move(*moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
+    apply_move(*moves = board, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
     return moves + 1;
 }
 
@@ -382,8 +391,7 @@ board_state_t* add_white_pawn_capture_left_up(
         PLAYER_BLACK != FIELD_GET_PLAYER(board[target_field]))
         return moves;
 
-    *moves = board;
-    apply_move(*moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
+    apply_move(*moves = board, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
     return moves + 1;
 }
 
@@ -395,8 +403,7 @@ board_state_t* add_white_pawn_capture_right_up(
         PLAYER_BLACK != FIELD_GET_PLAYER(board[target_field]))
         return moves;
 
-    *moves = board;
-    apply_move(*moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
+    apply_move(*moves = board, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
     return moves + 1;
 }
 
@@ -443,8 +450,115 @@ board_state_t* fill_white_pawn_candidate_moves(
     return moves;
 }
 
+board_state_t* add_black_pawn_move_down(
+    board_state_t* moves, const board_state_t& board, const field_t field) {
+    field_t target_field = field_down(field);
+    if (FIELD_INVALID == target_field or PIECE_EMPTY != FIELD_GET_PIECE(board[target_field]))
+        return moves;
+
+    if (rank_t::_1 == field_rank(target_field)) {
+        auto& move1 = moves[0];
+        apply_move(move1 = board, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
+        move1[target_field] = FIELD_SET_PIECE(move1[target_field], PIECE_KNIGHT);
+
+        auto& move2 = moves[1];
+        apply_move(move2 = board, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
+        move2[target_field] = FIELD_SET_PIECE(move2[target_field], PIECE_BISHOP);
+
+        auto& move3 = moves[2];
+        apply_move(move3 = board, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
+        move3[target_field] = FIELD_SET_PIECE(move3[target_field], PIECE_ROOK);
+
+        auto& move4 = moves[3];
+        apply_move(move4 = board, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
+        move4[target_field] = FIELD_SET_PIECE(move4[target_field], PIECE_QUEEN);
+        return moves + 4;
+    } else {
+        apply_move(*moves = board, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
+        return moves + 1;
+    }
+}
+
+
+board_state_t* add_black_pawn_move_down_long(
+    board_state_t* moves, const board_state_t& board, const field_t field) {
+    if (rank_t::_7 != field_rank(field)) return moves;
+    field_t target_field = field_down(field);
+    if (FIELD_INVALID == target_field or PIECE_EMPTY != FIELD_GET_PIECE(board[target_field]))
+        return moves;
+    target_field = field_down(target_field);
+    if (FIELD_INVALID == target_field or PIECE_EMPTY != FIELD_GET_PIECE(board[target_field]))
+        return moves;
+
+    apply_move(*moves = board, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
+    return moves + 1;
+}
+
+board_state_t* add_black_pawn_capture_left_down(
+    board_state_t* moves, const board_state_t& board, const field_t field) {
+    field_t target_field = field_left_down(field);
+    if (FIELD_INVALID == target_field or
+        PIECE_EMPTY == FIELD_GET_PIECE(board[target_field]) or
+        PLAYER_WHITE != FIELD_GET_PLAYER(board[target_field]))
+        return moves;
+
+    apply_move(*moves = board, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
+    return moves + 1;
+}
+
+board_state_t* add_black_pawn_capture_right_down(
+    board_state_t* moves, const board_state_t& board, const field_t field) {
+    field_t target_field = field_right_down(field);
+    if (FIELD_INVALID == target_field or
+        PIECE_EMPTY == FIELD_GET_PIECE(board[target_field]) or
+        PLAYER_WHITE != FIELD_GET_PLAYER(board[target_field]))
+        return moves;
+
+    apply_move(*moves = board, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
+    return moves + 1;
+}
+
+
+board_state_t* add_black_pawn_capture_enpassant_left(
+    board_state_t* moves, const board_state_t& board, const field_t field) {
+    if (rank_t::_4 != field_rank(field)) return moves;
+
+    field_t target_field = field_left_down(field);
+    field_t opps_move_from = field_down(target_field);
+    field_t opps_move_to = field_up(target_field);
+    if (!check_last_move(board, { PLAYER_WHITE, PIECE_PAWN, opps_move_from, opps_move_to }))
+        return moves;
+
+    *moves = board;
+    (*moves)[opps_move_to] = FIELD_SET_PIECE((*moves)[opps_move_to], PIECE_EMPTY);
+    apply_move(*moves, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
+    return moves + 1;
+}
+
+board_state_t* add_black_pawn_capture_enpassant_right(
+    board_state_t* moves, const board_state_t& board, const field_t field) {
+    if (rank_t::_4 != field_rank(field)) return moves;
+
+    field_t target_field = field_right_down(field);
+    field_t opps_move_from = field_down(target_field);
+    field_t opps_move_to = field_up(target_field);
+    if (!check_last_move(board, { PLAYER_WHITE, PIECE_PAWN, opps_move_from, opps_move_to }))
+        return moves;
+
+    *moves = board;
+    (*moves)[opps_move_to] = FIELD_SET_PIECE((*moves)[opps_move_to], PIECE_EMPTY);
+    apply_move(*moves, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
+    return moves + 1;
+}
+
 board_state_t* fill_black_pawn_candidate_moves(
     board_state_t* moves, const board_state_t& board, const field_t field) {
+    moves = add_black_pawn_move_down(moves, board, field);
+    moves = add_black_pawn_move_down_long(moves, board, field);
+    moves = add_black_pawn_capture_left_down(moves, board, field);
+    moves = add_black_pawn_capture_right_down(moves, board, field);
+    moves = add_black_pawn_capture_enpassant_left(moves, board, field);
+    moves = add_black_pawn_capture_enpassant_right(moves, board, field);
     return moves;
 }
 
