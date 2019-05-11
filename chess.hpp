@@ -336,9 +336,27 @@ board_state_t* add_white_pawn_move_up(
     if (FIELD_INVALID == target_field or PIECE_EMPTY != FIELD_GET_PIECE(board[target_field]))
         return moves;
 
-    *moves = board;
-    apply_move(*moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
-    return moves + 1;
+    if (rank_t::_8 == field_rank(target_field)) {
+        auto& move1 = moves[0];
+        apply_move(move1 = board, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
+        move1[target_field] = FIELD_SET_PIECE(move1[target_field], PIECE_KNIGHT);
+
+        auto& move2 = moves[1];
+        apply_move(move2 = board, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
+        move2[target_field] = FIELD_SET_PIECE(move2[target_field], PIECE_BISHOP);
+
+        auto& move3 = moves[2];
+        apply_move(move3 = board, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
+        move3[target_field] = FIELD_SET_PIECE(move3[target_field], PIECE_ROOK);
+
+        auto& move4 = moves[3];
+        apply_move(move4 = board, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
+        move4[target_field] = FIELD_SET_PIECE(move4[target_field], PIECE_QUEEN);
+        return moves + 4;
+    } else {
+        apply_move(*moves = board, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
+        return moves + 1;
+    }
 }
 
 board_state_t* add_white_pawn_move_up_long(

@@ -266,3 +266,30 @@ TEST(Pawn_CandidateMoves_White_CaptureEnPassantRight) {
     ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[F5])); 
 }
 
+TEST(Pawn_CandidateMoves_White_MoveForward_Queening) {
+    auto board = one_pawn_board(A7);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+    std::vector<piece_t> transformed_pieces;
+    do {
+        auto found_move = find_candidate_move(
+            c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_PAWN, A7, A8 });
+        if (c_moves_end != found_move) {
+            transformed_pieces.push_back(FIELD_GET_PIECE((*found_move)[A8]));
+            c_moves_beg = found_move + 1;
+        } else {
+            c_moves_beg = found_move;
+        }
+    } while (c_moves_end != c_moves_beg);
+
+    ASSERT(4u == transformed_pieces.size());
+    ASSERT(transformed_pieces.end() !=
+        std::find(transformed_pieces.begin(), transformed_pieces.end(), PIECE_KNIGHT));
+    ASSERT(transformed_pieces.end() !=
+        std::find(transformed_pieces.begin(), transformed_pieces.end(), PIECE_BISHOP));
+    ASSERT(transformed_pieces.end() !=
+        std::find(transformed_pieces.begin(), transformed_pieces.end(), PIECE_ROOK));
+    ASSERT(transformed_pieces.end() !=
+        std::find(transformed_pieces.begin(), transformed_pieces.end(), PIECE_QUEEN));
+}
