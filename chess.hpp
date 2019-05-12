@@ -643,6 +643,92 @@ board_state_t* fill_cross_candidate_moves(
     return moves;
 }
 
+board_state_t* fill_white_short_castle(
+    board_state_t* moves, const board_state_t& board, const field_t field)
+{
+    if (E1 != field or
+        PLAYER_WHITE != FIELD_GET_PLAYER(board[H1]) or
+        PIECE_ROOK != FIELD_GET_PIECE(board[H1]) or
+        PIECE_EMPTY != FIELD_GET_PIECE(board[F1]) or
+        PIECE_EMPTY != FIELD_GET_PIECE(board[G1]))
+        return moves;
+
+    auto& move = *moves = board;
+    move[H1] = FIELD_SET_PIECE(move[H1], PIECE_EMPTY);
+    move[F1] = FIELD_SET_PIECE(FIELD_SET_PLAYER(move[F1], PLAYER_WHITE), PIECE_ROOK);
+    apply_move(move, { PLAYER_WHITE, PIECE_KING, E1, G1 });
+    return moves + 1;
+}
+
+board_state_t* fill_black_short_castle(
+    board_state_t* moves, const board_state_t& board, const field_t field)
+{
+    if (E8 != field or
+        PLAYER_BLACK != FIELD_GET_PLAYER(board[H8]) or
+        PIECE_ROOK != FIELD_GET_PIECE(board[H8]) or
+        PIECE_EMPTY != FIELD_GET_PIECE(board[F8]) or
+        PIECE_EMPTY != FIELD_GET_PIECE(board[G8]))
+        return moves;
+
+    auto& move = *moves = board;
+    move[H8] = FIELD_SET_PIECE(move[H8], PIECE_EMPTY);
+    move[F8] = FIELD_SET_PIECE(FIELD_SET_PLAYER(move[F8], PLAYER_BLACK), PIECE_ROOK);
+    apply_move(move, { PLAYER_BLACK, PIECE_KING, E8, G8 });
+    return moves + 1;
+}
+
+board_state_t* fill_short_castle(
+    board_state_t* moves, const board_state_t& board, const player_t player, const field_t field)
+{
+    return PLAYER_WHITE == player
+        ? fill_white_short_castle(moves, board, field)
+        : fill_black_short_castle(moves, board, field);
+}
+
+board_state_t* fill_white_long_castle(
+    board_state_t* moves, const board_state_t& board, const field_t field)
+{
+    if (E1 != field or
+        PLAYER_WHITE != FIELD_GET_PLAYER(board[A1]) or
+        PIECE_ROOK != FIELD_GET_PIECE(board[A1]) or
+        PIECE_EMPTY != FIELD_GET_PIECE(board[B1]) or
+        PIECE_EMPTY != FIELD_GET_PIECE(board[C1]) or
+        PIECE_EMPTY != FIELD_GET_PIECE(board[D1]))
+        return moves;
+
+    auto& move = *moves = board;
+    move[A1] = FIELD_SET_PIECE(move[A1], PIECE_EMPTY);
+    move[D1] = FIELD_SET_PIECE(FIELD_SET_PLAYER(move[D1], PLAYER_WHITE), PIECE_ROOK);
+    apply_move(move, { PLAYER_WHITE, PIECE_KING, E1, C1 });
+    return moves + 1;
+}
+
+board_state_t* fill_black_long_castle(
+    board_state_t* moves, const board_state_t& board, const field_t field)
+{
+    if (E8 != field or
+        PLAYER_BLACK != FIELD_GET_PLAYER(board[A8]) or
+        PIECE_ROOK != FIELD_GET_PIECE(board[A8]) or
+        PIECE_EMPTY != FIELD_GET_PIECE(board[B8]) or
+        PIECE_EMPTY != FIELD_GET_PIECE(board[C8]) or
+        PIECE_EMPTY != FIELD_GET_PIECE(board[D8]))
+        return moves;
+
+    auto& move = *moves = board;
+    move[A8] = FIELD_SET_PIECE(move[A8], PIECE_EMPTY);
+    move[D8] = FIELD_SET_PIECE(FIELD_SET_PLAYER(move[D8], PLAYER_BLACK), PIECE_ROOK);
+    apply_move(move, { PLAYER_BLACK, PIECE_KING, E8, C8 });
+    return moves + 1;
+}
+
+board_state_t* fill_long_castle(
+    board_state_t* moves, const board_state_t& board, const player_t player, const field_t field)
+{
+    return PLAYER_WHITE == player
+        ? fill_white_long_castle(moves, board, field)
+        : fill_black_long_castle(moves, board, field);
+}
+
 board_state_t* fill_king_candidate_moves(
     board_state_t* moves, const board_state_t& board, const player_t player, const field_t field) {
     moves = fill_regular_candidate_move(
@@ -661,6 +747,8 @@ board_state_t* fill_king_candidate_moves(
         moves, board, player, PIECE_KING, field, field_left_down(field));
     moves = fill_regular_candidate_move(
         moves, board, player, PIECE_KING, field, field_right_down(field));
+    moves = fill_short_castle(moves, board, player, field);
+    moves = fill_long_castle(moves, board, player, field);
     return moves;
 }
 

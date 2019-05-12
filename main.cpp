@@ -420,7 +420,7 @@ TEST(CandidateMoves_Pawn_Black_CaptureEnPassantRight) {
     auto found_move = find_candidate_move(
         c_moves.get(), c_moves_end, { PLAYER_BLACK, PIECE_PAWN, D4, E3 });
     ASSERT(c_moves_end != found_move);
-    ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[E4])); 
+    ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[E4]));
 }
 
 TEST(CandidateMoves_Pawn_White_MoveForward_Queening) {
@@ -782,4 +782,80 @@ TEST(CandidateMoves_King_Black_InvalidMoves_ValidMoves_Captures) {
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E4, F4 }));
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E4, D5 }));
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E4, F5 }));
+}
+
+TEST(CandidateMoves_King_White_ValidShortCastle) {
+    auto board = chess::EMPTY_BOARD;
+    board[A8] = FBK;
+    board[E1] = FWK;
+    board[H1] = FWR;
+    draw_board(board);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    auto found_move = find_candidate_move(
+        c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E1, G1 });
+    ASSERT(c_moves_end != found_move);
+    ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[H1])); 
+    ASSERT(PLAYER_WHITE == FIELD_GET_PLAYER((*found_move)[F1])); 
+    ASSERT(PIECE_ROOK == FIELD_GET_PIECE((*found_move)[F1])); 
+}
+
+TEST(CandidateMoves_King_Black_ValidShortCastle) {
+    auto board = chess::EMPTY_BOARD;
+    board[A1] = FWK;
+    board[E8] = FBK;
+    board[H8] = FBR;
+    draw_board(board);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    auto found_move = find_candidate_move(
+        c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E8, G8 });
+    ASSERT(c_moves_end != found_move);
+    ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[H8])); 
+    ASSERT(PLAYER_BLACK == FIELD_GET_PLAYER((*found_move)[F8])); 
+    ASSERT(PIECE_ROOK == FIELD_GET_PIECE((*found_move)[F8])); 
+}
+
+TEST(CandidateMoves_King_White_ValidLongCastle) {
+    auto board = chess::EMPTY_BOARD;
+    board[H8] = FBK;
+    board[E1] = FWK;
+    board[A1] = FWR;
+    draw_board(board);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    auto found_move = find_candidate_move(
+        c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E1, C1 });
+    ASSERT(c_moves_end != found_move);
+    ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[A1])); 
+    ASSERT(PLAYER_WHITE == FIELD_GET_PLAYER((*found_move)[D1])); 
+    ASSERT(PIECE_ROOK == FIELD_GET_PIECE((*found_move)[D1])); 
+}
+
+TEST(CandidateMoves_King_Black_ValidLongCastle) {
+    auto board = chess::EMPTY_BOARD;
+    board[H1] = FWK;
+    board[E8] = FBK;
+    board[A8] = FBR;
+    draw_board(board);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    auto found_move = find_candidate_move(
+        c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E8, C8 });
+    ASSERT(c_moves_end != found_move);
+    ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[A8])); 
+    ASSERT(PLAYER_BLACK == FIELD_GET_PLAYER((*found_move)[D8])); 
+    ASSERT(PIECE_ROOK == FIELD_GET_PIECE((*found_move)[D8])); 
 }

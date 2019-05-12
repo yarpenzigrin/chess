@@ -32,11 +32,11 @@ meta_state
 16 bytes
 
 bytes 0-1: last_move_encoding
-byte 2: bitfield
-    bits 0-3: last_capture_encoding
-    bits 4-7: unused
-bytes 3-4: move counter
-bytes 5-23: unused
+byte 2:
+    bit 0: white short castling rights (0 - can, 1 - cant)
+    bit 1: white long castling rights (0 - can, 1 - cant)
+    bit 2: black short castling rights (0 - can, 1 - cant)
+    bit 3: black long castling rights (0 - can, 1 - cant)
 
 last_move_encoding
 ------------------
