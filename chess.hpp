@@ -187,12 +187,12 @@ constexpr std::size_t BOARD_STATE_META_LAST_MOVE_BITS = 16;
 constexpr void BOARD_STATE_META_SET_LAST_MOVE(board_state_t& board, last_move_t last_move) {
     BOARD_STATE_META_SET_BITS(board, last_move,
         BOARD_STATE_META_LAST_MOVE_POS,
-        BOARD_STATE_META_LAST_MOVE_BITS);
+        BOARD_STATE_META_LAST_MOVE_POS + BOARD_STATE_META_LAST_MOVE_BITS);
 }
 constexpr last_move_t BOARD_STATE_META_GET_LAST_MOVE(const board_state_t& board) {
     return BOARD_STATE_META_GET_BITS<last_move_t>(board,
         BOARD_STATE_META_LAST_MOVE_POS,
-        BOARD_STATE_META_LAST_MOVE_BITS);
+        BOARD_STATE_META_LAST_MOVE_POS + BOARD_STATE_META_LAST_MOVE_BITS);
 }
 
 constexpr std::size_t LAST_MOVE_PLAYER_POS = 0;
@@ -238,6 +238,55 @@ constexpr last_move_t LAST_MOVE_SET_TO(last_move_t last_move, field_t to) {
 constexpr field_t LAST_MOVE_GET_TO(last_move_t last_move) {
     return static_cast<field_t>((last_move & LAST_MOVE_TO_MASK) >> LAST_MOVE_TO_POS);
 }
+
+using castling_rights_t = uint8_t;
+
+constexpr std::size_t BOARD_STATE_META_CASTLING_RIGHTS_POS = 16;
+constexpr std::size_t BOARD_STATE_META_CASTLING_RIGHTS_BITS = 4;
+constexpr void BOARD_STATE_META_SET_CASTLING_RIGHTS(
+    board_state_t& board, castling_rights_t last_move) {
+    BOARD_STATE_META_SET_BITS(board, last_move,
+        BOARD_STATE_META_CASTLING_RIGHTS_POS,
+        BOARD_STATE_META_CASTLING_RIGHTS_POS + BOARD_STATE_META_CASTLING_RIGHTS_BITS);
+}
+constexpr castling_rights_t BOARD_STATE_META_GET_CASTLING_RIGHTS(const board_state_t& board) {
+    return BOARD_STATE_META_GET_BITS<castling_rights_t>(board,
+        BOARD_STATE_META_CASTLING_RIGHTS_POS,
+        BOARD_STATE_META_CASTLING_RIGHTS_POS + BOARD_STATE_META_CASTLING_RIGHTS_BITS);
+}
+
+constexpr castling_rights_t CASTLING_RIGHTS_WHITE_SHORT_MASK = 0b0001;
+constexpr castling_rights_t CASTLING_RIGHTS_REMOVE_WHITE_SHORT(castling_rights_t rights) {
+    return rights | CASTLING_RIGHTS_WHITE_SHORT_MASK;
+}
+constexpr bool CASTLING_RIGHTS_WHITE_SHORT(castling_rights_t rights) {
+    return !(rights & CASTLING_RIGHTS_WHITE_SHORT_MASK);
+}
+
+constexpr castling_rights_t CASTLING_RIGHTS_WHITE_LONG_MASK = 0b0010;
+constexpr castling_rights_t CASTLING_RIGHTS_REMOVE_WHITE_LONG(castling_rights_t rights) {
+    return rights | CASTLING_RIGHTS_WHITE_LONG_MASK;
+}
+constexpr bool CASTLING_RIGHTS_WHITE_LONG(castling_rights_t rights) {
+    return !(rights & CASTLING_RIGHTS_WHITE_LONG_MASK);
+}
+
+constexpr castling_rights_t CASTLING_RIGHTS_BLACK_SHORT_MASK = 0b0100;
+constexpr castling_rights_t CASTLING_RIGHTS_REMOVE_BLACK_SHORT(castling_rights_t rights) {
+    return rights | CASTLING_RIGHTS_BLACK_SHORT_MASK;
+}
+constexpr bool CASTLING_RIGHTS_BLACK_SHORT(castling_rights_t rights) {
+    return !(rights & CASTLING_RIGHTS_BLACK_SHORT_MASK);
+}
+
+constexpr castling_rights_t CASTLING_RIGHTS_BLACK_LONG_MASK = 0b1000;
+constexpr castling_rights_t CASTLING_RIGHTS_REMOVE_BLACK_LONG(castling_rights_t rights) {
+    return rights | CASTLING_RIGHTS_BLACK_LONG_MASK;
+}
+constexpr bool CASTLING_RIGHTS_BLACK_LONG(castling_rights_t rights) {
+    return !(rights & CASTLING_RIGHTS_BLACK_LONG_MASK);
+}
+
 
 enum class file_t {
     A = 0, B, C, D, E, F, G, H, file_t_max
@@ -328,16 +377,53 @@ bool check_last_move(const board_state_t& board, const move_s& move) {
         move.to == last_move_to;
 }
 
-void apply_move(board_state_t& board, const move_s& move) {
-    board[move.from] = FIELD_SET_PIECE(board[move.from], PIECE_EMPTY);
-    board[move.to] = FIELD_SET_PIECE(FIELD_SET_PLAYER(board[move.to], move.player), move.piece);
-
-    last_move_t last_move = 0;
+void update_last_move(board_state_t& board, const move_s& move) {
+    last_move_t last_move = {};
     last_move = LAST_MOVE_SET_PLAYER(last_move, move.player);
     last_move = LAST_MOVE_SET_PIECE(last_move, move.piece);
     last_move = LAST_MOVE_SET_FROM(last_move, move.from);
     last_move = LAST_MOVE_SET_TO(last_move, move.to);
     BOARD_STATE_META_SET_LAST_MOVE(board, last_move);
+}
+
+void update_castling_rights(board_state_t& board, const move_s& move) {
+    if (PLAYER_WHITE == move.player) {
+        if (PIECE_KING == move.piece) {
+            castling_rights_t rights = BOARD_STATE_META_GET_CASTLING_RIGHTS(board);
+            rights = CASTLING_RIGHTS_REMOVE_WHITE_LONG(rights);
+            rights = CASTLING_RIGHTS_REMOVE_WHITE_SHORT(rights);
+            BOARD_STATE_META_SET_CASTLING_RIGHTS(board, rights);
+        } else if (PIECE_ROOK == move.piece and rank_t::_1 == field_rank(move.from) and
+            (file_t::A == field_file(move.from) or file_t::H == field_file(move.from))) {
+            castling_rights_t rights = BOARD_STATE_META_GET_CASTLING_RIGHTS(board);
+            rights = (file_t::A == field_file(move.from)
+                ? CASTLING_RIGHTS_REMOVE_WHITE_LONG(rights)
+                : CASTLING_RIGHTS_REMOVE_WHITE_SHORT(rights));
+            BOARD_STATE_META_SET_CASTLING_RIGHTS(board, rights);
+        }
+    } else {
+        if (PIECE_KING == move.piece) {
+            castling_rights_t rights = BOARD_STATE_META_GET_CASTLING_RIGHTS(board);
+            rights = CASTLING_RIGHTS_REMOVE_BLACK_LONG(rights);
+            rights = CASTLING_RIGHTS_REMOVE_BLACK_SHORT(rights);
+            BOARD_STATE_META_SET_CASTLING_RIGHTS(board, rights);
+        } else if (PIECE_ROOK == move.piece and rank_t::_8 == field_rank(move.from) and
+            (file_t::A == field_file(move.from) or file_t::H == field_file(move.from))) {
+            castling_rights_t rights = BOARD_STATE_META_GET_CASTLING_RIGHTS(board);
+            rights = (file_t::A == field_file(move.from)
+                ? CASTLING_RIGHTS_REMOVE_BLACK_LONG(rights)
+                : CASTLING_RIGHTS_REMOVE_BLACK_SHORT(rights));
+            BOARD_STATE_META_SET_CASTLING_RIGHTS(board, rights);
+        }
+    }
+}
+
+void apply_move(board_state_t& board, const move_s& move) {
+    board[move.from] = FIELD_SET_PIECE(board[move.from], PIECE_EMPTY);
+    board[move.to] = FIELD_SET_PIECE(FIELD_SET_PLAYER(board[move.to], move.player), move.piece);
+
+    update_last_move(board, move);
+    update_castling_rights(board, move);
 }
 
 board_state_t* add_white_pawn_move_up(
@@ -650,7 +736,8 @@ board_state_t* fill_white_short_castle(
         PLAYER_WHITE != FIELD_GET_PLAYER(board[H1]) or
         PIECE_ROOK != FIELD_GET_PIECE(board[H1]) or
         PIECE_EMPTY != FIELD_GET_PIECE(board[F1]) or
-        PIECE_EMPTY != FIELD_GET_PIECE(board[G1]))
+        PIECE_EMPTY != FIELD_GET_PIECE(board[G1]) or
+        !CASTLING_RIGHTS_WHITE_SHORT(BOARD_STATE_META_GET_CASTLING_RIGHTS(board)))
         return moves;
 
     auto& move = *moves = board;
@@ -667,7 +754,8 @@ board_state_t* fill_black_short_castle(
         PLAYER_BLACK != FIELD_GET_PLAYER(board[H8]) or
         PIECE_ROOK != FIELD_GET_PIECE(board[H8]) or
         PIECE_EMPTY != FIELD_GET_PIECE(board[F8]) or
-        PIECE_EMPTY != FIELD_GET_PIECE(board[G8]))
+        PIECE_EMPTY != FIELD_GET_PIECE(board[G8]) or
+        !CASTLING_RIGHTS_BLACK_SHORT(BOARD_STATE_META_GET_CASTLING_RIGHTS(board)))
         return moves;
 
     auto& move = *moves = board;
@@ -693,7 +781,8 @@ board_state_t* fill_white_long_castle(
         PIECE_ROOK != FIELD_GET_PIECE(board[A1]) or
         PIECE_EMPTY != FIELD_GET_PIECE(board[B1]) or
         PIECE_EMPTY != FIELD_GET_PIECE(board[C1]) or
-        PIECE_EMPTY != FIELD_GET_PIECE(board[D1]))
+        PIECE_EMPTY != FIELD_GET_PIECE(board[D1]) or
+        !CASTLING_RIGHTS_WHITE_LONG(BOARD_STATE_META_GET_CASTLING_RIGHTS(board)))
         return moves;
 
     auto& move = *moves = board;
@@ -711,7 +800,8 @@ board_state_t* fill_black_long_castle(
         PIECE_ROOK != FIELD_GET_PIECE(board[A8]) or
         PIECE_EMPTY != FIELD_GET_PIECE(board[B8]) or
         PIECE_EMPTY != FIELD_GET_PIECE(board[C8]) or
-        PIECE_EMPTY != FIELD_GET_PIECE(board[D8]))
+        PIECE_EMPTY != FIELD_GET_PIECE(board[D8]) or
+        !CASTLING_RIGHTS_BLACK_LONG(BOARD_STATE_META_GET_CASTLING_RIGHTS(board)))
         return moves;
 
     auto& move = *moves = board;
