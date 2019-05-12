@@ -668,6 +668,11 @@ board_state_t* fill_candidate_moves(
             moves = fill_cross_candidate_moves(moves, board, player, field, piece);
             continue;
         }
+        if (PIECE_QUEEN == piece) {
+            moves = fill_diagonal_candidate_moves(moves, board, player, field, piece);
+            moves = fill_cross_candidate_moves(moves, board, player, field, piece);
+            continue;
+        }
     }
     return moves;
 }
