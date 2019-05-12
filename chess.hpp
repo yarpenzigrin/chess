@@ -572,12 +572,10 @@ board_state_t* fill_pawn_candidate_moves(
 board_state_t* fill_knight_candidate_move(
     board_state_t* moves, const board_state_t& board, const player_t player,
     const field_t field, const field_t target_field) {
-    printf("tralalala\n");
     if (FIELD_INVALID == target_field or
         (player == FIELD_GET_PLAYER(board[target_field]) and
          PIECE_EMPTY != FIELD_GET_PIECE(board[target_field])))
         return moves;
-    printf("trolololo\n");
 
     apply_move(*moves = board, { player, PIECE_KNIGHT, field, target_field });
     return moves + 1;

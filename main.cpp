@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 #include <memory>
 #include <vector>
 #include <functional>
@@ -15,17 +16,22 @@ using namespace chess;
 using Test = std::function<void(void)>;
 std::vector<Test> tests;
 std::vector<const char*> failures;
+std::stringstream test_output;
 
 static bool add_test(void (*fn)(void), const char* test_name)
 {
     tests.push_back([fn, test_name](){
-        printf("***** %s *****\n", test_name);
+        printf("***** %s ***** ", test_name);
         try {
+            test_output = std::stringstream();
             fn();
         } catch (const std::runtime_error& e) {
+            std::cout << '\n' << test_output.str();
             failures.push_back(test_name);
+            printf("^^^^^ %s ^^^^^\n", test_name);
+            return;
         }
-        printf("^^^^^ %s ^^^^^\n", test_name);
+        printf("OK\n");
     });
     return true;
 }
@@ -47,9 +53,13 @@ int main() {
     return 0;
 }
 
+void draw_board(const board_state_t& board) {
+    gui::print_board(test_output, board);
+}
+
 static void temp_print_c_moves(const board_state_t* c_moves_beg, const board_state_t* c_moves_end) {
     for (auto it = c_moves_beg; it != c_moves_end; ++it)
-        gui::print_board(std::cout, *it);
+        draw_board(*it);
 }
 
 TEST(Internal_StaticEvaluation_FieldProperties) {
@@ -138,7 +148,7 @@ auto one_pawn_board(const field_t pawn_position, const field_state_t pawn_type =
     board[E1] = FWK;
     board[E8] = FBK;
     board[pawn_position] = pawn_type;
-    gui::print_board(std::cout, board);
+    draw_board(board);
     return board;
 }
 
@@ -147,8 +157,8 @@ const board_state_t* find_candidate_move(
     return std::find_if(moves, moves_end, [&last_move](const auto& board) {
             bool success = check_last_move(board, last_move);
             if (success) {
-                printf("\nFound requested candidate move:\n\n");
-                gui::print_board(std::cout, board);
+                test_output << "\nFound requested candidate move:\n\n";
+                draw_board(board);
             }
             return success;
         });
@@ -263,7 +273,7 @@ auto two_pawn_board(const field_t white_pawn_position, const field_t black_pawn_
     board[E8] = FBK;
     board[white_pawn_position] = FWP;
     board[black_pawn_position] = FBP;
-    gui::print_board(std::cout, board);
+    draw_board(board);
     return board;
 }
 
@@ -360,7 +370,7 @@ TEST(CandidateMoves_Pawn_Black_CaptureRightDown) {
 TEST(CandidateMoves_Pawn_White_CaptureEnPassantLeft) {
     auto board = two_pawn_board(E5, D7);
     apply_move(board, { PLAYER_BLACK, PIECE_PAWN, D7, D5 });
-    gui::print_board(std::cout, board);
+    draw_board(board);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
 
@@ -374,7 +384,7 @@ TEST(CandidateMoves_Pawn_White_CaptureEnPassantLeft) {
 TEST(CandidateMoves_Pawn_White_CaptureEnPassantRight) {
     auto board = two_pawn_board(E5, F7);
     apply_move(board, { PLAYER_BLACK, PIECE_PAWN, F7, F5 });
-    gui::print_board(std::cout, board);
+    draw_board(board);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
 
@@ -388,7 +398,7 @@ TEST(CandidateMoves_Pawn_White_CaptureEnPassantRight) {
 TEST(CandidateMoves_Pawn_Black_CaptureEnPassantLeft) {
     auto board = two_pawn_board(E2, F4);
     apply_move(board, { PLAYER_WHITE, PIECE_PAWN, E2, E4 });
-    gui::print_board(std::cout, board);
+    draw_board(board);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
 
@@ -402,7 +412,7 @@ TEST(CandidateMoves_Pawn_Black_CaptureEnPassantLeft) {
 TEST(CandidateMoves_Pawn_Black_CaptureEnPassantRight) {
     auto board = two_pawn_board(E2, D4);
     apply_move(board, { PLAYER_WHITE, PIECE_PAWN, E2, E4 });
-    gui::print_board(std::cout, board);
+    draw_board(board);
     auto c_moves = std::make_unique<board_state_t[]>(32);
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
 
@@ -479,7 +489,7 @@ auto three_piece_board(
     board[piece1_pos] = piece1;
     board[piece2_pos] = piece2;
     board[piece3_pos] = piece3;
-    gui::print_board(std::cout, board);
+    draw_board(board);
     return board;
 }
 
