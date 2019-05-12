@@ -569,36 +569,36 @@ board_state_t* fill_pawn_candidate_moves(
         : fill_black_pawn_candidate_moves(moves, board, field);
 }
 
-board_state_t* fill_knight_candidate_move(
-    board_state_t* moves, const board_state_t& board, const player_t player,
+board_state_t* fill_regular_candidate_move(
+    board_state_t* moves, const board_state_t& board, const player_t player, const piece_t piece,
     const field_t field, const field_t target_field) {
     if (FIELD_INVALID == target_field or
         (player == FIELD_GET_PLAYER(board[target_field]) and
          PIECE_EMPTY != FIELD_GET_PIECE(board[target_field])))
         return moves;
 
-    apply_move(*moves = board, { player, PIECE_KNIGHT, field, target_field });
+    apply_move(*moves = board, { player, piece, field, target_field });
     return moves + 1;
 }
 
 board_state_t* fill_knight_candidate_moves(
     board_state_t* moves, const board_state_t& board, const player_t player, const field_t field) {
-    moves = fill_knight_candidate_move(
-        moves, board, player, field, field_up(field_left_up(field)));
-    moves = fill_knight_candidate_move(
-        moves, board, player, field, field_up(field_right_up(field)));
-    moves = fill_knight_candidate_move(
-        moves, board, player, field, field_left(field_left_up(field)));
-    moves = fill_knight_candidate_move(
-        moves, board, player, field, field_left(field_left_down(field)));
-    moves = fill_knight_candidate_move(
-        moves, board, player, field, field_down(field_left_down(field)));
-    moves = fill_knight_candidate_move(
-        moves, board, player, field, field_down(field_right_down(field)));
-    moves = fill_knight_candidate_move(
-        moves, board, player, field, field_right(field_right_up(field)));
-    moves = fill_knight_candidate_move(
-        moves, board, player, field, field_right(field_right_down(field)));
+    moves = fill_regular_candidate_move(
+        moves, board, player, PIECE_KNIGHT, field, field_up(field_left_up(field)));
+    moves = fill_regular_candidate_move(
+        moves, board, player, PIECE_KNIGHT, field, field_up(field_right_up(field)));
+    moves = fill_regular_candidate_move(
+        moves, board, player, PIECE_KNIGHT, field, field_left(field_left_up(field)));
+    moves = fill_regular_candidate_move(
+        moves, board, player, PIECE_KNIGHT, field, field_left(field_left_down(field)));
+    moves = fill_regular_candidate_move(
+        moves, board, player, PIECE_KNIGHT, field, field_down(field_left_down(field)));
+    moves = fill_regular_candidate_move(
+        moves, board, player, PIECE_KNIGHT, field, field_down(field_right_down(field)));
+    moves = fill_regular_candidate_move(
+        moves, board, player, PIECE_KNIGHT, field, field_right(field_right_up(field)));
+    moves = fill_regular_candidate_move(
+        moves, board, player, PIECE_KNIGHT, field, field_right(field_right_down(field)));
     return moves;
 }
 
@@ -643,6 +643,27 @@ board_state_t* fill_cross_candidate_moves(
     return moves;
 }
 
+board_state_t* fill_king_candidate_moves(
+    board_state_t* moves, const board_state_t& board, const player_t player, const field_t field) {
+    moves = fill_regular_candidate_move(
+        moves, board, player, PIECE_KING, field, field_up(field));
+    moves = fill_regular_candidate_move(
+        moves, board, player, PIECE_KING, field, field_left_up(field));
+    moves = fill_regular_candidate_move(
+        moves, board, player, PIECE_KING, field, field_right_up(field));
+    moves = fill_regular_candidate_move(
+        moves, board, player, PIECE_KING, field, field_left(field));
+    moves = fill_regular_candidate_move(
+        moves, board, player, PIECE_KING, field, field_right(field));
+    moves = fill_regular_candidate_move(
+        moves, board, player, PIECE_KING, field, field_down(field));
+    moves = fill_regular_candidate_move(
+        moves, board, player, PIECE_KING, field, field_left_down(field));
+    moves = fill_regular_candidate_move(
+        moves, board, player, PIECE_KING, field, field_right_down(field));
+    return moves;
+}
+
 board_state_t* fill_candidate_moves(
     board_state_t* moves, const board_state_t& board, const player_t player) {
     for (uint8_t field_idx = static_cast<uint8_t>(A1);
@@ -672,6 +693,9 @@ board_state_t* fill_candidate_moves(
             moves = fill_diagonal_candidate_moves(moves, board, player, field, piece);
             moves = fill_cross_candidate_moves(moves, board, player, field, piece);
             continue;
+        }
+        if (PIECE_KING == piece) {
+            moves = fill_king_candidate_moves(moves, board, player, field);
         }
     }
     return moves;

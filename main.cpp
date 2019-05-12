@@ -663,8 +663,6 @@ TEST(CandidateMoves_Queen_White_InvalidMoves_ValidMoves_Captures) {
             return PLAYER_WHITE == last_move_player and PIECE_QUEEN == last_move_piece;
         });
 
-    temp_print_c_moves(c_moves_beg, c_moves_end);
-
     ASSERT(20u == white_queen_moves);
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_QUEEN, B3, B1 }));
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_QUEEN, B3, B2 }));
@@ -703,8 +701,6 @@ TEST(CandidateMoves_Queen_Black_InvalidMoves_ValidMoves_Captures) {
             return PLAYER_BLACK == last_move_player and PIECE_QUEEN == last_move_piece;
         });
 
-    temp_print_c_moves(c_moves_beg, c_moves_end);
-
     ASSERT(20u == black_queen_moves);
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_QUEEN, B3, B1 }));
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_QUEEN, B3, B2 }));
@@ -728,3 +724,62 @@ TEST(CandidateMoves_Queen_Black_InvalidMoves_ValidMoves_Captures) {
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_QUEEN, B3, H3 }));
 }
 
+TEST(CandidateMoves_King_White_InvalidMoves_ValidMoves_Captures) {
+    auto board = chess::EMPTY_BOARD;
+    board[H8] = FBK;
+    board[E4] = FWK;
+    board[E3] = FBP;
+    board[E5] = FWP;
+    draw_board(board);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    auto white_king_moves = std::count_if(c_moves_beg, c_moves_end, [](const auto& board)
+        {
+            last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
+            player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
+            piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+            return PLAYER_WHITE == last_move_player and PIECE_KING == last_move_piece;
+        });
+
+    ASSERT(7u == white_king_moves);
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E4, D3 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E4, E3 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E4, F3 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E4, D4 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E4, F4 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E4, D5 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E4, F5 }));
+}
+
+TEST(CandidateMoves_King_Black_InvalidMoves_ValidMoves_Captures) {
+    auto board = chess::EMPTY_BOARD;
+    board[H8] = FWK;
+    board[E4] = FBK;
+    board[E3] = FWP;
+    board[E5] = FBP;
+    draw_board(board);
+    auto c_moves = std::make_unique<board_state_t[]>(32);
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    auto black_king_moves = std::count_if(c_moves_beg, c_moves_end, [](const auto& board)
+        {
+            last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
+            player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
+            piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+            return PLAYER_BLACK == last_move_player and PIECE_KING == last_move_piece;
+        });
+
+    ASSERT(7u == black_king_moves);
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E4, D3 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E4, E3 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E4, F3 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E4, D4 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E4, F4 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E4, D5 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E4, F5 }));
+}
