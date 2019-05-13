@@ -45,15 +45,18 @@ void print_field(T& stream, const field_state_t field) {
 
 template <typename T>
 void print_board(T& stream, const board_state_t& board) {
-    std::size_t cnt = 0;
     stream << '\n';
-    for (const auto field : board) {
-        stream << ' ';
-        print_field(stream, field);
-        stream << ' ';
-        if (++cnt % 8 == 0)
-            stream << '\n' << '\n';
+
+    for (uint8_t j = 0; j < 8; ++j) {
+        stream << static_cast<char>(7 - j + '1') << " ";
+        for (uint8_t i = 0; i < 8; ++i) {
+            stream << ' ';
+            print_field(stream, board[make_field(i, 7 - j)]);
+            stream << ' ';
+        }
+        stream << '\n' << " \n";
     }
+    stream << "   A  B  C  D  E  F  G  H\n\n";
 }
 
 }  // namespace gui

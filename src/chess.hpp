@@ -36,6 +36,85 @@ constexpr T GET_VALUE(T field, std::size_t pos, std::size_t mask) {
 
 }  // namespace
 
+namespace detail
+{
+
+template <typename T, std::size_t N>
+struct ring_buffer_s {
+    T* storage;
+    std::size_t start_idx = 0;
+    std::size_t past_end_idx = 1;
+};
+
+template <typename T, std::size_t N>
+void ring_buffer_add(ring_buffer_s<T, N>& buffer, T&& value) {
+    if (buffer.start_idx == 0 and buffer.past_end_idx <= N) {
+        buffer.storage[buffer.past_end_idx - 1] = std::forward<T>(value);
+        ++buffer.past_end_idx;
+    } else if (buffer.start_idx > 0 and buffer.start_idx < N) {
+        buffer.storage[buffer.past_end_idx - 1] = std::forward<T>(value);
+        ++buffer.past_end_idx;
+        ++buffer.start_idx;
+    } else if (buffer.past_end_idx > N) {
+        buffer.storage[0] = std::forward<T>(value);
+        buffer.past_end_idx = 2;
+        buffer.start_idx = 1;
+    }
+}
+
+template <typename T, std::size_t N>
+void ring_buffer_add(ring_buffer_s<T, N>& buffer, const T& value) {
+    if (buffer.start_idx == 0 and buffer.past_end_idx <= N) {
+        buffer.storage[buffer.past_end_idx - 1] = value;
+        ++buffer.past_end_idx;
+    } else if (buffer.start_idx > 0 and buffer.start_idx < N) {
+        buffer.storage[buffer.past_end_idx - 1] = value;
+        ++buffer.past_end_idx;
+        ++buffer.start_idx;
+    } else if (buffer.past_end_idx > N) {
+        buffer.storage[0] = value;
+        buffer.past_end_idx = 2;
+        buffer.start_idx = 1;
+    }
+}
+
+template <typename T, std::size_t N>
+std::size_t ring_buffer_size(const ring_buffer_s<T, N>& buffer) {
+    return buffer.start_idx == 0 ? buffer.past_end_idx - 1 : N;
+}
+
+template <typename T, std::size_t N>
+constexpr std::size_t ring_buffer_max_size(const ring_buffer_s<T, N>& buffer) {
+    return N;
+}
+
+template <typename T, std::size_t N>
+T* ring_buffer_begin(const ring_buffer_s<T, N>& buffer) {
+    return buffer.storage + buffer.start_idx;
+}
+
+template <typename T, std::size_t N>
+T* ring_buffer_end(const ring_buffer_s<T, N>& buffer) {
+    return buffer.storage + buffer.past_end_idx - 1;
+}
+
+template <typename T, std::size_t N>
+T* ring_buffer_next(const ring_buffer_s<T, N>& buffer, T* iter) {
+    std::size_t pos = iter - buffer.storage;
+    if (N - 1 == pos and buffer.start_idx > 0) {
+        return buffer.storage;
+    } else {
+        return iter + 1;
+    }
+}
+
+#define RING_BUFFER_FOREACH(buffer, it)                                                            \
+    auto it = ring_buffer_begin(buffer);                                                           \
+    auto end_cond = (ring_buffer_size(buffer) == 0 ? it : nullptr);                                \
+    for (; it != end_cond; it = ring_buffer_next(buffer, it), end_cond = ring_buffer_end(buffer))
+
+}  // detail
+
 using player_t = uint8_t;
 
 constexpr player_t PLAYER_WHITE =    1;
@@ -164,7 +243,9 @@ enum field_t
     A6, B6, C6, D6, E6, F6, G6, H6,
     A7, B7, C7, D7, E7, F7, G7, H7,
     A8, B8, C8, D8, E8, F8, G8, H8,
-    FIELD_INVALID
+    FIELD_INVALID,
+    FIELD_START = A1,
+    FIELD_STOP = FIELD_INVALID
 };
 
 template <typename T>
@@ -265,8 +346,8 @@ using castling_rights_t = uint8_t;
 constexpr std::size_t BOARD_STATE_META_CASTLING_RIGHTS_POS = 16;
 constexpr std::size_t BOARD_STATE_META_CASTLING_RIGHTS_BITS = 4;
 constexpr void BOARD_STATE_META_SET_CASTLING_RIGHTS(
-    board_state_t& board, castling_rights_t last_move) {
-    BOARD_STATE_META_SET_BITS(board, last_move,
+    board_state_t& board, castling_rights_t rights) {
+    BOARD_STATE_META_SET_BITS(board, rights,
         BOARD_STATE_META_CASTLING_RIGHTS_POS,
         BOARD_STATE_META_CASTLING_RIGHTS_POS + BOARD_STATE_META_CASTLING_RIGHTS_BITS);
 }
@@ -498,8 +579,8 @@ void update_king_fields_under_attack(
 
 void update_fields_under_attack(board_state_t& board) {
     clear_fields_under_attack(board);
-    for (uint8_t field_idx = static_cast<uint8_t>(A1);
-         field_idx < static_cast<uint8_t>(FIELD_INVALID);
+    for (uint8_t field_idx = static_cast<uint8_t>(FIELD_START);
+         field_idx < static_cast<uint8_t>(FIELD_STOP);
          ++field_idx) {
         field_t field = static_cast<field_t>(field_idx);
         piece_t piece = FIELD_GET_PIECE(board[field]);
@@ -1004,8 +1085,8 @@ board_state_t* fill_king_candidate_moves(
 
 board_state_t* fill_candidate_moves(
     board_state_t* moves, const board_state_t& board, const player_t player) {
-    for (uint8_t field_idx = static_cast<uint8_t>(A1);
-         field_idx < static_cast<uint8_t>(FIELD_INVALID);
+    for (uint8_t field_idx = static_cast<uint8_t>(FIELD_START);
+         field_idx < static_cast<uint8_t>(FIELD_STOP);
          ++field_idx) {
         if (player != FIELD_GET_PLAYER(board[field_idx])) continue;
 
@@ -1103,6 +1184,34 @@ bool check_draw_by_insufficient_material(const board_state_t& board) {
     return true;
 }
 
+constexpr std::size_t MOVE_HISTORY_SIZE = 20;
+using move_history_t = detail::ring_buffer_s<board_state_t, MOVE_HISTORY_SIZE>;
+
+bool compare_simple_position(const board_state_t& lhs, const board_state_t& rhs) {
+    for (uint8_t field_idx = static_cast<uint8_t>(FIELD_START);
+         field_idx < static_cast<uint8_t>(FIELD_STOP);
+         ++field_idx) {
+        auto left_field = lhs[field_idx];
+        auto right_field = rhs[field_idx];
+        if (FIELD_GET_PIECE(left_field) != FIELD_GET_PIECE(right_field) or
+            (PIECE_EMPTY != FIELD_GET_PIECE(left_field) and
+            FIELD_GET_PLAYER(left_field) != FIELD_GET_PLAYER(right_field))) {
+            return false;
+        }
+    }
+    return BOARD_STATE_META_GET_CASTLING_RIGHTS(lhs) == BOARD_STATE_META_GET_CASTLING_RIGHTS(rhs);
+}
+
+bool check_draw_by_threefold_repetition(const board_state_t& board, move_history_t& history) {
+    std::size_t same_position_count = 0u;
+    RING_BUFFER_FOREACH(history, move_ptr) {
+        if (compare_simple_position(*move_ptr, board) and ++same_position_count > 1 )
+            return true;
+    }
+    ring_buffer_add(history, board);
+    return false;
+}
+
 enum class game_action_t {
     MOVE, FORFEIT
 };
@@ -1112,13 +1221,15 @@ using request_move_f = game_action_t(*)(board_state_t&);
 enum class game_result_t {
     WHITE_WON_FORFEIT, WHITE_WON_CHECKMATE,
     BLACK_WON_FORFEIT, BLACK_WON_CHECKMATE,
-    DRAW_STALEMATE, DRAW_INSUFFICIENT_MATERIAL, ERROR
+    DRAW_STALEMATE, DRAW_INSUFFICIENT_MATERIAL, DRAW_REPETITION,
+    ERROR
 };
 
 struct null_log_t {
     template <typename T>
     null_log_t& operator<<(const T&) { return *this; }
 } null_log;
+
 
 template <typename log_t = null_log_t>
 game_result_t play(void* memory, request_move_f white_move_fn, request_move_f black_move_fn,
@@ -1129,11 +1240,16 @@ game_result_t play(void* memory, request_move_f white_move_fn, request_move_f bl
         return game_result_t::ERROR;
     }
 
-    log << "Game started.\n";
-    board_state_t* candidate_moves_beg = static_cast<board_state_t*>(memory);
+    board_state_t* move_storage = static_cast<board_state_t*>(memory);
+
+    move_history_t move_history;
+    move_history.storage = move_storage;
+
+    board_state_t* candidate_moves_beg = move_storage + ring_buffer_max_size(move_history);
     board_state_t* candidate_moves_end = candidate_moves_beg;
     board_state_t saved_board = board;
     game_action_t last_action = game_action_t::MOVE;
+    log << "Game started.\n";
     do {
         candidate_moves_end = fill_candidate_moves(candidate_moves_beg, board, PLAYER_WHITE);
         if (candidate_moves_end == candidate_moves_beg)
@@ -1160,6 +1276,8 @@ game_result_t play(void* memory, request_move_f white_move_fn, request_move_f bl
         } while (!white_move_valid);
         if (check_draw_by_insufficient_material(board))
             return game_result_t::DRAW_INSUFFICIENT_MATERIAL;
+        if (check_draw_by_threefold_repetition(board, move_history))
+            return game_result_t::DRAW_REPETITION;
 
         saved_board = board;
 
@@ -1189,6 +1307,8 @@ game_result_t play(void* memory, request_move_f white_move_fn, request_move_f bl
 
         if (check_draw_by_insufficient_material(board))
             return game_result_t::DRAW_INSUFFICIENT_MATERIAL;
+        if (check_draw_by_threefold_repetition(board, move_history))
+            return game_result_t::DRAW_REPETITION;
     } while (true);
 
     log << "Game ended with weird error.\n";

@@ -93,8 +93,8 @@ game_action_t white_to_play(board_state_t& board) {
     ASSERT(board_ptr != &board);
     test_output << "After white's move:\n";
     draw_board(board);
-    test_output << "Black's candidate moves:\n";
-    print_candidate_moves(board);
+    // test_output << "Black's candidate moves:\n";
+    // print_candidate_moves(board);
     return game_action_t::MOVE;
 }
 
@@ -106,8 +106,8 @@ game_action_t black_to_play(board_state_t& board) {
     ASSERT(board_ptr != &board);
     test_output << "After black's move:\n";
     draw_board(board);
-    test_output << "Whites's candidate moves:\n";
-    print_candidate_moves(board);
+    // test_output << "Whites's candidate moves:\n";
+    // print_candidate_moves(board);
     return game_action_t::MOVE;
 }
 
@@ -300,4 +300,29 @@ TEST(Gameplay_Play_AfterBlacksMove_DrawByInsufficientMaterialOnlyKingsAndOneKnig
     });
     ASSERT(game_result_t::DRAW_INSUFFICIENT_MATERIAL ==
         do_play(white_to_play, black_to_play, board));
+}
+
+TEST(Gameplay_Play_AfterWhiteMove_DrawByThreeFoldRepetitionWithPerpetualCheck) {
+    auto board = prepare_board([](auto& board){
+        board[A8] = FBK;
+        board[A6] = FBP;
+        board[B6] = FBP;
+        board[C5] = FWQ;
+        board[E2] = FWK;
+    });
+    BOARD_STATE_META_SET_CASTLING_RIGHTS(board, 0b1111);
+    fill_white_move_seq({
+        { PLAYER_WHITE, PIECE_QUEEN, C5, C8 }, // 1st occurrence of the same position
+        { PLAYER_WHITE, PIECE_QUEEN, C8, C7 },
+        { PLAYER_WHITE, PIECE_QUEEN, C7, C8 }, // 2nd
+        { PLAYER_WHITE, PIECE_QUEEN, C8, C7 },
+        { PLAYER_WHITE, PIECE_QUEEN, C7, C8 }  // 3rd
+    });
+    fill_black_move_seq({
+        { PLAYER_BLACK, PIECE_KING, A8, A7 },
+        { PLAYER_BLACK, PIECE_KING, A7, A8 },
+        { PLAYER_BLACK, PIECE_KING, A8, A7 },
+        { PLAYER_BLACK, PIECE_KING, A7, A8 }
+    });
+    ASSERT(game_result_t::DRAW_REPETITION == do_play(white_to_play, black_to_play, board));
 }
