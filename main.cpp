@@ -1165,3 +1165,66 @@ TEST(Validation_White_Checkmate_ShouldResultIn0CandidateMoves) {
     temp_print_c_moves(c_moves_beg, c_moves_end);
     ASSERT(c_moves_beg == c_moves_end);
 }
+
+TEST(Validation_White_Check_OnlyWayToStopMate_ShouldResultIn1CandidateMove) {
+    auto board = prepare_board([](auto& board) {
+        board[B1] = FWK;
+        board[A2] = FWP;
+        board[B2] = FWP;
+        board[C2] = FWP;
+        board[D7] = FWQ;
+        board[H1] = FBR;
+        board[H8] = FBK;
+    });
+    auto c_moves = prepare_moves();
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    temp_print_c_moves(c_moves_beg, c_moves_end);
+    ASSERT(1u == (c_moves_end - c_moves_beg));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_QUEEN, D7, D1 }));
+}
+
+TEST(Validation_White_Check_TwoWaysToStopMate_ShouldResultIn2CandidateMoves) {
+    auto board = prepare_board([](auto& board) {
+        board[B1] = FWK;
+        board[A2] = FWP;
+        board[B2] = FWP;
+        board[C2] = FWP;
+        board[E4] = FWQ;
+        board[H1] = FBR;
+        board[H8] = FBK;
+    });
+    auto c_moves = prepare_moves();
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    temp_print_c_moves(c_moves_beg, c_moves_end);
+    ASSERT(2u == (c_moves_end - c_moves_beg));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_QUEEN, E4, E1 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_QUEEN, E4, H1 }));
+}
+
+TEST(Validation_White_CannotMovePinnedPiece) {
+    auto board = prepare_board([](auto& board) {
+        board[E8] = FBK;
+        board[E4] = FWK;
+        board[D4] = FWP;
+        board[F5] = FWN;
+        board[A4] = FBR;
+        board[H7] = FBB;
+        board[C5] = FBP;
+    });
+    auto c_moves = prepare_moves();
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    temp_print_c_moves(c_moves_beg, c_moves_end);
+    ASSERT(6u == (c_moves_end - c_moves_beg));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E4, E5 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E4, D5 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E4, E3 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E4, D3 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E4, F3 }));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E4, F4 }));
+}
