@@ -1,62 +1,9 @@
-#include <iostream>
-#include <sstream>
 #include <memory>
-#include <vector>
-#include <functional>
-#include <exception>
 #include <algorithm>
+#include "chesstest.hpp"
 #include "chess_tty_gui.hpp"
 
 using namespace chess;
-
-using Test = std::function<void(void)>;
-std::vector<Test> tests;
-std::vector<const char*> failures;
-std::stringstream test_output;
-
-static bool add_test(void (*fn)(void), const char* test_name)
-{
-    tests.push_back([fn, test_name](){
-        printf("***** %s ***** ", test_name);
-        try {
-            test_output = std::stringstream();
-            fn();
-        } catch (const std::runtime_error& e) {
-            std::cout << '\n' << test_output.str();
-            failures.push_back(test_name);
-            printf("^^^^^ %s ^^^^^\n", test_name);
-            return;
-        }
-        printf("OK\n");
-    });
-    return true;
-}
-
-#define TEST(name)                                                                  \
-    void name();                                                                    \
-    static bool name##_init = add_test(name, #name);                                \
-    void name()                                                                     \
-
-#define ASSERT(cond) if (!(cond)) { printf("\n!!! %s:%d Condition:\n  \"%s\"\nfailed.\n\n", \
-    __FILE__, __LINE__, #cond);                                                             \
-    throw std::runtime_error("Assertion failed."); }
-
-int main() {
-    for (auto test : tests)
-        test();
-    if (!failures.empty())
-    {
-        printf("\n\nFAILURES:\n");
-        for (auto failed_test : failures)
-            printf(" * %s\n", failed_test);
-    }
-    return 0;
-}
-
-
-void draw_board(const board_state_t& board) {
-    gui::print_board(test_output, board);
-}
 
 static void temp_print_c_moves(const board_state_t* c_moves_beg, const board_state_t* c_moves_end) {
     for (auto it = c_moves_beg; it != c_moves_end; ++it)

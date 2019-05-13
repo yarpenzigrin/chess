@@ -515,7 +515,7 @@ void update_fields_under_attack(board_state_t& board) {
                 update_diagonal_fields_under_attack(board, field, player);
                 update_cross_fields_under_attack(board, field, player);
                 break;
-            case PIECE_KING: update_knight_fields_under_attack(board, field, player); break;
+            case PIECE_KING: update_king_fields_under_attack(board, field, player); break;
         }
     }
 }
@@ -1057,6 +1057,88 @@ bool validate_board_state(const board_state_t& board)
         return false;
     }
     return true;
+}
+
+enum class game_action_t {
+    MOVE, FORFEIT
+};
+
+using request_move_f = game_action_t(*)(board_state_t&);
+
+enum class game_result_t {
+    WHITE_WON_FORFEIT, WHITE_WON_CHECKMATE,
+    BLACK_WON_FORFEIT, BLACK_WON_CHECKMATE,
+    DRAW_STALEMATE, ERROR
+};
+
+struct null_log_t {
+    template <typename T>
+    null_log_t& operator<<(const T&) { return *this; }
+} null_log;
+
+template <typename log_t = null_log_t>
+game_result_t play(void* memory, request_move_f white_move_fn, request_move_f black_move_fn,
+    board_state_t board = START_BOARD) {
+    log_t log;
+    if (nullptr == memory or nullptr == white_move_fn or nullptr == black_move_fn) {
+        log << "Game ended with error.";
+        return game_result_t::ERROR;
+    }
+
+    log << "Game started.\n";
+    board_state_t* candidate_moves_beg = static_cast<board_state_t*>(memory);
+    board_state_t* candidate_moves_end = candidate_moves_beg;
+    board_state_t saved_board = board;
+    game_action_t last_action = game_action_t::MOVE;
+    do {
+        candidate_moves_end = fill_candidate_moves(candidate_moves_beg, board, PLAYER_WHITE);
+        if (candidate_moves_end == candidate_moves_beg)
+            return game_result_t::BLACK_WON_CHECKMATE;
+
+        bool white_move_valid = false;
+        do {
+            log << "White to move.\n";
+            last_action = white_move_fn(board);
+            if (game_action_t::FORFEIT == last_action)
+                return game_result_t::BLACK_WON_FORFEIT;
+            for (auto it = candidate_moves_beg; it != candidate_moves_end; ++it) {
+                if (std::equal(board.begin(), board.end(), it->begin())) {
+                    white_move_valid = true;
+                    break;
+                }
+            }
+            if (!white_move_valid) {
+                log << "Illegal move from white rejected.\n";
+                board = saved_board;
+            }
+        } while (!white_move_valid);
+        saved_board = board;
+
+        candidate_moves_end = fill_candidate_moves(candidate_moves_beg, board, PLAYER_BLACK);
+        if (candidate_moves_end == candidate_moves_beg)
+            return game_result_t::WHITE_WON_CHECKMATE;
+        bool black_move_valid = false;
+        do {
+            log << "Black to move.\n";
+            last_action = black_move_fn(board);
+            if (game_action_t::FORFEIT == last_action)
+                return game_result_t::WHITE_WON_FORFEIT;
+            for (auto it = candidate_moves_beg; it != candidate_moves_end; ++it) {
+                if (std::equal(board.begin(), board.end(), it->begin())) {
+                    black_move_valid = true;
+                    break;
+                }
+            }
+            if (!black_move_valid) {
+                log << "Illegal move from black rejected.\n";
+                board = saved_board;
+            }
+        } while (!black_move_valid);
+        saved_board = board;
+    } while (true);
+
+    log << "Game ended with weird error.\n";
+    return game_result_t::ERROR;
 }
 
 }  // namespace chess
