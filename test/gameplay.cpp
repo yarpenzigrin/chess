@@ -239,3 +239,65 @@ TEST(Gameplay_Play_AfterBlacksMove_DrawByInsufficientMaterialOnlyKingsLeft) {
     ASSERT(game_result_t::DRAW_INSUFFICIENT_MATERIAL ==
         do_play(white_to_play, black_to_play, board));
 }
+
+TEST(Gameplay_Play_AfterWhitesMove_DrawByInsufficientMaterialOnlyKingsAndOneBishopLeft) {
+    auto board = prepare_board([](auto& board){
+        board[A8] = FBK;
+        board[H1] = FWK;
+        board[G2] = FBP;
+        board[F8] = FBB;
+    });
+    fill_white_move_seq({
+        { PLAYER_WHITE, PIECE_KING, H1, G2 }
+    });
+    ASSERT(game_result_t::DRAW_INSUFFICIENT_MATERIAL ==
+        do_play(white_to_play, black_to_play, board));
+}
+
+TEST(Gameplay_Play_AfterBlacksMove_DrawByInsufficientMaterialOnlyKingsAndOneBishopLeft) {
+    auto board = prepare_board([](auto& board){
+        board[A8] = FBK;
+        board[H1] = FWK;
+        board[B7] = FWP;
+        board[F1] = FWB;
+    });
+    fill_white_move_seq({
+        { PLAYER_WHITE, PIECE_KING, H1, G2 }
+    });
+    fill_black_move_seq({
+        { PLAYER_BLACK, PIECE_KING, A8, B7 }
+    });
+    ASSERT(game_result_t::DRAW_INSUFFICIENT_MATERIAL ==
+        do_play(white_to_play, black_to_play, board));
+}
+
+TEST(Gameplay_Play_AfterWhitesMove_DrawByInsufficientMaterialOnlyKingsAndOneKnightLeft) {
+    auto board = prepare_board([](auto& board){
+        board[A8] = FBK;
+        board[H1] = FWK;
+        board[G2] = FBP;
+        board[F8] = FBN;
+    });
+    fill_white_move_seq({
+        { PLAYER_WHITE, PIECE_KING, H1, G2 }
+    });
+    ASSERT(game_result_t::DRAW_INSUFFICIENT_MATERIAL ==
+        do_play(white_to_play, black_to_play, board));
+}
+
+TEST(Gameplay_Play_AfterBlacksMove_DrawByInsufficientMaterialOnlyKingsAndOneKnightLeft) {
+    auto board = prepare_board([](auto& board){
+        board[A8] = FBK;
+        board[H1] = FWK;
+        board[B7] = FWP;
+        board[F1] = FWN;
+    });
+    fill_white_move_seq({
+        { PLAYER_WHITE, PIECE_KING, H1, G2 }
+    });
+    fill_black_move_seq({
+        { PLAYER_BLACK, PIECE_KING, A8, B7 }
+    });
+    ASSERT(game_result_t::DRAW_INSUFFICIENT_MATERIAL ==
+        do_play(white_to_play, black_to_play, board));
+}
