@@ -5,6 +5,10 @@
 
 using namespace chess;
 
+void draw_board(const board_state_t& board) {
+    gui::print_board(test_output, board);
+}
+
 static void temp_print_c_moves(const board_state_t* c_moves_beg, const board_state_t* c_moves_end) {
     for (auto it = c_moves_beg; it != c_moves_end; ++it)
         draw_board(*it);
@@ -1257,4 +1261,37 @@ TEST(Validation_Black_CannotMovePinnedPiece) {
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E5, D6 }));
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E5, F5 }));
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E5, F6 }));
+}
+
+
+TEST(Validation_White_CannotMoveKingNearKing) {
+    auto board = prepare_board([](auto& board) {
+        board[A1] = FWK;
+        board[B3] = FBK;
+        board[D4] = FWP;
+        board[D5] = FBP;
+    });
+    auto c_moves = prepare_moves();
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    temp_print_c_moves(c_moves_beg, c_moves_end);
+    ASSERT(1u == (c_moves_end - c_moves_beg));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, A1, B1 }));
+}
+
+TEST(Validation_Black_CannotMoveKingNearKing) {
+    auto board = prepare_board([](auto& board) {
+        board[A8] = FBK;
+        board[B6] = FWK;
+        board[D4] = FWP;
+        board[D5] = FBP;
+    });
+    auto c_moves = prepare_moves();
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
+    const auto* c_moves_beg = c_moves.get();
+
+    temp_print_c_moves(c_moves_beg, c_moves_end);
+    ASSERT(1u == (c_moves_end - c_moves_beg));
+    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, A8, B8 }));
 }
