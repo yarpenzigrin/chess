@@ -61,6 +61,8 @@ void draw_board(const board_state_t& board) {
 static void temp_print_c_moves(const board_state_t* c_moves_beg, const board_state_t* c_moves_end) {
     for (auto it = c_moves_beg; it != c_moves_end; ++it)
         draw_board(*it);
+
+    test_output << c_moves_end - c_moves_beg << " candidate moves.\n";
 }
 
 board_state_t prepare_board(std::function<void(board_state_t&)> setup_fn) {
@@ -72,7 +74,7 @@ board_state_t prepare_board(std::function<void(board_state_t&)> setup_fn) {
 }
 
 std::unique_ptr<board_state_t[]> prepare_moves() {
-    return std::make_unique<board_state_t[]>(32);
+    return std::make_unique<board_state_t[]>(64);
 }
 
 TEST(Internal_StaticEvaluation_FieldProperties) {
@@ -391,7 +393,7 @@ TEST(CandidateMoves_Pawn_Black_CaptureRightDown) {
 
 TEST(CandidateMoves_Pawn_White_CaptureEnPassantLeft) {
     auto board = two_pawn_board(E5, D7, [](auto& board) {
-            apply_move(board, { PLAYER_BLACK, PIECE_PAWN, D7, D5 });
+            apply_move_if_valid(&board, { PLAYER_BLACK, PIECE_PAWN, D7, D5 });
         });
     auto c_moves = prepare_moves();
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
@@ -405,7 +407,7 @@ TEST(CandidateMoves_Pawn_White_CaptureEnPassantLeft) {
 
 TEST(CandidateMoves_Pawn_White_CaptureEnPassantRight) {
     auto board = two_pawn_board(E5, D7, [](auto& board) {
-            apply_move(board, { PLAYER_BLACK, PIECE_PAWN, F7, F5 });
+            apply_move_if_valid(&board, { PLAYER_BLACK, PIECE_PAWN, F7, F5 });
         });
     auto c_moves = prepare_moves();
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
@@ -419,7 +421,7 @@ TEST(CandidateMoves_Pawn_White_CaptureEnPassantRight) {
 
 TEST(CandidateMoves_Pawn_Black_CaptureEnPassantLeft) {
     auto board = two_pawn_board(E2, F4, [](auto& board) {
-            apply_move(board, { PLAYER_WHITE, PIECE_PAWN, E2, E4 });
+            apply_move_if_valid(&board, { PLAYER_WHITE, PIECE_PAWN, E2, E4 });
         });
     auto c_moves = prepare_moves();
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
@@ -433,7 +435,7 @@ TEST(CandidateMoves_Pawn_Black_CaptureEnPassantLeft) {
 
 TEST(CandidateMoves_Pawn_Black_CaptureEnPassantRight) {
     auto board = two_pawn_board(E2, D4, [](auto& board) {
-            apply_move(board, { PLAYER_WHITE, PIECE_PAWN, E2, E4 });
+            apply_move_if_valid(&board, { PLAYER_WHITE, PIECE_PAWN, E2, E4 });
         });
     auto c_moves = prepare_moves();
     auto c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_BLACK);
@@ -885,7 +887,7 @@ TEST(CandidateMoves_King_White_CastlingRightsLostByKing) {
         board[E2] = FWK;
         board[A1] = FWR;
         board[H1] = FWR;
-        apply_move(board, { PLAYER_WHITE, PIECE_KING, E2, E1 });
+        apply_move_if_valid(&board, { PLAYER_WHITE, PIECE_KING, E2, E1 });
     });
 
     auto c_moves = prepare_moves();
@@ -903,7 +905,7 @@ TEST(CandidateMoves_King_Black_CastlingRightsLostByKing) {
         board[E7] = FBK;
         board[A8] = FBR;
         board[H8] = FBR;
-        apply_move(board, { PLAYER_BLACK, PIECE_KING, E7, E8 });
+        apply_move_if_valid(&board, { PLAYER_BLACK, PIECE_KING, E7, E8 });
     });
 
     auto c_moves = prepare_moves();
@@ -921,8 +923,8 @@ TEST(CandidateMoves_King_White_ShortCastlingRightsLostByRook) {
         board[E1] = FWK;
         board[A1] = FWR;
         board[H1] = FWR;
-        apply_move(board, { PLAYER_WHITE, PIECE_ROOK, H1, G1 });
-        apply_move(board, { PLAYER_WHITE, PIECE_ROOK, G1, H1 });
+        apply_move_if_valid(&board, { PLAYER_WHITE, PIECE_ROOK, H1, G1 });
+        apply_move_if_valid(&board, { PLAYER_WHITE, PIECE_ROOK, G1, H1 });
     });
 
     auto c_moves = prepare_moves();
@@ -940,8 +942,8 @@ TEST(CandidateMoves_King_Black_ShortCastlingRightsLostByRook) {
         board[E8] = FBK;
         board[A8] = FBR;
         board[H8] = FBR;
-        apply_move(board, { PLAYER_BLACK, PIECE_ROOK, H8, H7 });
-        apply_move(board, { PLAYER_BLACK, PIECE_ROOK, H7, H8 });
+        apply_move_if_valid(&board, { PLAYER_BLACK, PIECE_ROOK, H8, H7 });
+        apply_move_if_valid(&board, { PLAYER_BLACK, PIECE_ROOK, H7, H8 });
     });
 
     auto c_moves = prepare_moves();
@@ -959,8 +961,8 @@ TEST(CandidateMoves_King_White_LongCastlingRightsLostByRook) {
         board[E1] = FWK;
         board[A1] = FWR;
         board[H1] = FWR;
-        apply_move(board, { PLAYER_WHITE, PIECE_ROOK, A1, B1 });
-        apply_move(board, { PLAYER_WHITE, PIECE_ROOK, B1, A1 });
+        apply_move_if_valid(&board, { PLAYER_WHITE, PIECE_ROOK, A1, B1 });
+        apply_move_if_valid(&board, { PLAYER_WHITE, PIECE_ROOK, B1, A1 });
     });
 
     auto c_moves = prepare_moves();
@@ -978,8 +980,8 @@ TEST(CandidateMoves_King_Black_LongCastlingRightsLostByRook) {
         board[E8] = FBK;
         board[A8] = FBR;
         board[H8] = FBR;
-        apply_move(board, { PLAYER_BLACK, PIECE_ROOK, A8, A7 });
-        apply_move(board, { PLAYER_BLACK, PIECE_ROOK, A7, A8 });
+        apply_move_if_valid(&board, { PLAYER_BLACK, PIECE_ROOK, A8, A7 });
+        apply_move_if_valid(&board, { PLAYER_BLACK, PIECE_ROOK, A7, A8 });
     });
 
     auto c_moves = prepare_moves();
@@ -1142,4 +1144,24 @@ TEST(CandidateMoves_King_Black_LongCastleNotPermittedDueToC8Attacked) {
 
     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
     ASSERT(!check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E1, C1 }));
+}
+
+TEST(Validation_White_Checkmate_ShouldResultIn0CandidateMoves) {
+    auto board = prepare_board([](auto& board) {
+        board[A1] = FWK;
+        board[A2] = FBR;
+        board[B2] = FWP;
+        board[B3] = FBB;
+        board[C2] = FBP;
+        board[B8] = FWQ;
+        board[H8] = FWB;
+        board[E5] = FWN;
+        board[H1] = FBK;
+    });
+    auto c_moves = prepare_moves();
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    temp_print_c_moves(c_moves_beg, c_moves_end);
+    ASSERT(c_moves_beg == c_moves_end);
 }
