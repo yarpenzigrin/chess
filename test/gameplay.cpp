@@ -182,3 +182,15 @@ TEST(Gameplay_Play_CheckMateInTwoFromBlack) {
     });
     ASSERT(game_result_t::BLACK_WON_CHECKMATE == do_play(white_to_play, black_to_play, board));
 }
+
+TEST(Gameplay_Play_StalemateFromWhite) {
+    auto board = prepare_board([](auto& board){
+        board[A8] = FBK;
+        board[H1] = FWK;
+        board[B4] = FWQ;
+    });
+    fill_white_move_seq({
+        { PLAYER_WHITE, PIECE_QUEEN, B4, B6 }   // oops
+    });
+    ASSERT(game_result_t::DRAW_STALEMATE == do_play(white_to_play, black_to_play, board));
+}

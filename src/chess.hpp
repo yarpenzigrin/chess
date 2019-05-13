@@ -400,15 +400,13 @@ bool check_last_move(const board_state_t& board, const move_s& move) {
 
 bool is_king_under_attack(const board_state_t& board, const player_t player) {
     for (const auto field : board) {
-        if (PIECE_KING == FIELD_GET_PIECE(field)) {
-            if (player == FIELD_GET_PLAYER(field)) {
-                return PLAYER_WHITE == player
-                    ? FIELD_UNDER_BLACK_ATTACK(field)
-                    : FIELD_UNDER_WHITE_ATTACK(field);
-            }
+        if (PIECE_KING == FIELD_GET_PIECE(field) and player == FIELD_GET_PLAYER(field)) {
+            return PLAYER_WHITE == player
+                ? FIELD_UNDER_BLACK_ATTACK(field)
+                : FIELD_UNDER_WHITE_ATTACK(field);
         }
     }
-    return true;
+    return false;
 }
 
 void clear_fields_under_attack(board_state_t& board) {
@@ -1093,7 +1091,9 @@ game_result_t play(void* memory, request_move_f white_move_fn, request_move_f bl
     do {
         candidate_moves_end = fill_candidate_moves(candidate_moves_beg, board, PLAYER_WHITE);
         if (candidate_moves_end == candidate_moves_beg)
-            return game_result_t::BLACK_WON_CHECKMATE;
+            return is_king_under_attack(board, PLAYER_WHITE)
+                ? game_result_t::BLACK_WON_CHECKMATE
+                : game_result_t::DRAW_STALEMATE;
 
         bool white_move_valid = false;
         do {
@@ -1116,7 +1116,9 @@ game_result_t play(void* memory, request_move_f white_move_fn, request_move_f bl
 
         candidate_moves_end = fill_candidate_moves(candidate_moves_beg, board, PLAYER_BLACK);
         if (candidate_moves_end == candidate_moves_beg)
-            return game_result_t::WHITE_WON_CHECKMATE;
+            return is_king_under_attack(board, PLAYER_BLACK)
+                ? game_result_t::WHITE_WON_CHECKMATE
+                : game_result_t::DRAW_STALEMATE;
         bool black_move_valid = false;
         do {
             log << "Black to move.\n";
