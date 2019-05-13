@@ -78,6 +78,27 @@ constexpr piece_t FIELD_GET_PIECE(field_state_t field) {
     return (field & FIELD_PIECE_MASK) >> FIELD_PIECE_POS;
 }
 
+constexpr std::size_t FIELD_UNDER_WHITE_ATTACK_POS = 4;
+constexpr std::size_t FIELD_UNDER_BLACK_ATTACK_POS = 5;
+constexpr field_state_t FIELD_SET_UNDER_WHITE_ATTACK(field_state_t field) {
+    return SET_BIT(field, FIELD_UNDER_WHITE_ATTACK_POS);
+}
+constexpr field_state_t FIELD_SET_UNDER_BLACK_ATTACK(field_state_t field) {
+    return SET_BIT(field, FIELD_UNDER_BLACK_ATTACK_POS);
+}
+constexpr field_state_t FIELD_CLEAR_UNDER_WHITE_ATTACK(field_state_t field) {
+    return CLEAR_BIT(field, FIELD_UNDER_WHITE_ATTACK_POS);
+}
+constexpr field_state_t FIELD_CLEAR_UNDER_BLACK_ATTACK(field_state_t field) {
+    return CLEAR_BIT(field, FIELD_UNDER_BLACK_ATTACK_POS);
+}
+constexpr bool FIELD_UNDER_WHITE_ATTACK(field_state_t field) {
+    return field & MASK(FIELD_UNDER_WHITE_ATTACK_POS);
+}
+constexpr bool FIELD_UNDER_BLACK_ATTACK(field_state_t field) {
+    return field & MASK(FIELD_UNDER_BLACK_ATTACK_POS);
+}
+
 constexpr std::size_t FIELD_META_BITS_POS = 6;
 constexpr std::size_t FIELD_META_BITS_SIZE = 2;
 constexpr std::size_t FIELD_META_BITS_WIDTH = 0b11;
@@ -377,6 +398,115 @@ bool check_last_move(const board_state_t& board, const move_s& move) {
         move.to == last_move_to;
 }
 
+void clear_fields_under_attack(board_state_t& board) {
+    for (auto& field : board) {
+        field = FIELD_CLEAR_UNDER_WHITE_ATTACK(field);
+        field = FIELD_CLEAR_UNDER_BLACK_ATTACK(field);
+    }
+}
+
+void update_field_under_attack(board_state_t& board, const field_t field, const player_t player) {
+    if (FIELD_INVALID != field) {
+        if (PLAYER_WHITE == player) {
+            board[field] = FIELD_SET_UNDER_WHITE_ATTACK(board[field]);
+        } else {
+            board[field] = FIELD_SET_UNDER_BLACK_ATTACK(board[field]);
+        }
+    }
+}
+
+void update_pawn_fields_under_attack(
+    board_state_t& board, const field_t field, const player_t player) {
+    if (PLAYER_WHITE == player) {
+        update_field_under_attack(board, field_left_up(field), player);
+        update_field_under_attack(board, field_right_up(field), player);
+    } else {
+        update_field_under_attack(board, field_left_down(field), player);
+        update_field_under_attack(board, field_right_down(field), player);
+    }
+}
+
+void update_knight_fields_under_attack(
+    board_state_t& board, const field_t field, const player_t player) {
+    update_field_under_attack(board, field_up(field_left_up(field)), player);
+    update_field_under_attack(board, field_up(field_right_up(field)), player);
+    update_field_under_attack(board, field_left(field_left_up(field)), player);
+    update_field_under_attack(board, field_left(field_left_down(field)), player);
+    update_field_under_attack(board, field_down(field_left_down(field)), player);
+    update_field_under_attack(board, field_down(field_right_down(field)), player);
+    update_field_under_attack(board, field_right(field_right_up(field)), player);
+    update_field_under_attack(board, field_right(field_right_down(field)), player);
+}
+
+void update_ranged_fields_under_attack_op(
+    board_state_t& board, const field_t field, const player_t player,
+    field_t(*operation)(const field_t)) {
+    field_t target_field = field;
+    do {
+        target_field = operation(target_field);
+        if (FIELD_INVALID == target_field) break;
+        if (PIECE_EMPTY == FIELD_GET_PIECE(board[target_field])) {
+            update_field_under_attack(board, target_field, player);
+            continue;
+        }
+        if (player != FIELD_GET_PLAYER(board[target_field])) {
+            update_field_under_attack(board, target_field, player);
+            break;
+        }
+        break;
+    } while (true);
+}
+
+void update_diagonal_fields_under_attack(
+    board_state_t& board, const field_t field, const player_t player) {
+    update_ranged_fields_under_attack_op(board, field, player, field_left_up);
+    update_ranged_fields_under_attack_op(board, field, player, field_left_down);
+    update_ranged_fields_under_attack_op(board, field, player, field_right_up);
+    update_ranged_fields_under_attack_op(board, field, player, field_right_down);
+}
+
+void update_cross_fields_under_attack(
+    board_state_t& board, const field_t field, const player_t player) {
+    update_ranged_fields_under_attack_op(board, field, player, field_up);
+    update_ranged_fields_under_attack_op(board, field, player, field_down);
+    update_ranged_fields_under_attack_op(board, field, player, field_right);
+    update_ranged_fields_under_attack_op(board, field, player, field_left);
+}
+
+void update_king_fields_under_attack(
+    board_state_t& board, const field_t field, const player_t player) {
+    update_field_under_attack(board, field_up(field), player);
+    update_field_under_attack(board, field_right_up(field), player);
+    update_field_under_attack(board, field_right(field), player);
+    update_field_under_attack(board, field_right_down(field), player);
+    update_field_under_attack(board, field_down(field), player);
+    update_field_under_attack(board, field_left_down(field), player);
+    update_field_under_attack(board, field_left(field), player);
+    update_field_under_attack(board, field_left_up(field), player);
+}
+
+void update_fields_under_attack(board_state_t& board) {
+    clear_fields_under_attack(board);
+    for (uint8_t field_idx = static_cast<uint8_t>(A1);
+         field_idx < static_cast<uint8_t>(FIELD_INVALID);
+         ++field_idx) {
+        field_t field = static_cast<field_t>(field_idx);
+        piece_t piece = FIELD_GET_PIECE(board[field]);
+        player_t player = FIELD_GET_PLAYER(board[field]);
+        switch (piece) {
+            case PIECE_PAWN: update_pawn_fields_under_attack(board, field, player); break;
+            case PIECE_KNIGHT: update_knight_fields_under_attack(board, field, player); break;
+            case PIECE_BISHOP: update_diagonal_fields_under_attack(board, field, player); break;
+            case PIECE_ROOK: update_cross_fields_under_attack(board, field, player); break;
+            case PIECE_QUEEN:
+                update_diagonal_fields_under_attack(board, field, player);
+                update_cross_fields_under_attack(board, field, player);
+                break;
+            case PIECE_KING: update_knight_fields_under_attack(board, field, player); break;
+        }
+    }
+}
+
 void update_last_move(board_state_t& board, const move_s& move) {
     last_move_t last_move = {};
     last_move = LAST_MOVE_SET_PLAYER(last_move, move.player);
@@ -422,6 +552,7 @@ void apply_move(board_state_t& board, const move_s& move) {
     board[move.from] = FIELD_SET_PIECE(board[move.from], PIECE_EMPTY);
     board[move.to] = FIELD_SET_PIECE(FIELD_SET_PLAYER(board[move.to], move.player), move.piece);
 
+    update_fields_under_attack(board);
     update_last_move(board, move);
     update_castling_rights(board, move);
 }
@@ -604,7 +735,6 @@ board_state_t* add_black_pawn_capture_right_down(
     return moves + 1;
 }
 
-
 board_state_t* add_black_pawn_capture_enpassant_left(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     if (rank_t::_4 != field_rank(field)) return moves;
@@ -737,7 +867,10 @@ board_state_t* fill_white_short_castle(
         PIECE_ROOK != FIELD_GET_PIECE(board[H1]) or
         PIECE_EMPTY != FIELD_GET_PIECE(board[F1]) or
         PIECE_EMPTY != FIELD_GET_PIECE(board[G1]) or
-        !CASTLING_RIGHTS_WHITE_SHORT(BOARD_STATE_META_GET_CASTLING_RIGHTS(board)))
+        !CASTLING_RIGHTS_WHITE_SHORT(BOARD_STATE_META_GET_CASTLING_RIGHTS(board)) or
+        FIELD_UNDER_BLACK_ATTACK(board[E1]) or
+        FIELD_UNDER_BLACK_ATTACK(board[F1]) or
+        FIELD_UNDER_BLACK_ATTACK(board[G1]))
         return moves;
 
     auto& move = *moves = board;
