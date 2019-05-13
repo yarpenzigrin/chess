@@ -153,6 +153,7 @@ TEST(Gameplay_Play_BlacksRidiculousMovesIsNotAllowed) {
     auto board = prepare_board([](auto& board){
         board[E1] = FWK;
         board[E8] = FBK;
+        board[A2] = FWP;
     });
     fill_white_move_seq({
         { PLAYER_WHITE, PIECE_KING, E1, E2 }
@@ -193,4 +194,48 @@ TEST(Gameplay_Play_StalemateFromWhite) {
         { PLAYER_WHITE, PIECE_QUEEN, B4, B6 }   // oops
     });
     ASSERT(game_result_t::DRAW_STALEMATE == do_play(white_to_play, black_to_play, board));
+}
+
+TEST(Gameplay_Play_StalemateFromBlack) {
+    auto board = prepare_board([](auto& board){
+        board[A7] = FWK;
+        board[H1] = FBK;
+        board[B4] = FBQ;
+    });
+    fill_white_move_seq({
+        { PLAYER_WHITE, PIECE_KING, A7, A8 }   // escape!
+    });
+    fill_black_move_seq({
+        { PLAYER_BLACK, PIECE_QUEEN, B4, B6 }   // oops
+    });
+    ASSERT(game_result_t::DRAW_STALEMATE == do_play(white_to_play, black_to_play, board));
+}
+
+TEST(Gameplay_Play_AfterWhitesMove_DrawByInsufficientMaterialOnlyKingsLeft) {
+    auto board = prepare_board([](auto& board){
+        board[A8] = FBK;
+        board[H1] = FWK;
+        board[G2] = FBP;
+    });
+    fill_white_move_seq({
+        { PLAYER_WHITE, PIECE_KING, H1, G2 }
+    });
+    ASSERT(game_result_t::DRAW_INSUFFICIENT_MATERIAL ==
+        do_play(white_to_play, black_to_play, board));
+}
+
+TEST(Gameplay_Play_AfterBlacksMove_DrawByInsufficientMaterialOnlyKingsLeft) {
+    auto board = prepare_board([](auto& board){
+        board[A8] = FBK;
+        board[H1] = FWK;
+        board[B7] = FWP;
+    });
+    fill_white_move_seq({
+        { PLAYER_WHITE, PIECE_KING, H1, G2 }
+    });
+    fill_black_move_seq({
+        { PLAYER_BLACK, PIECE_KING, A8, B7 }
+    });
+    ASSERT(game_result_t::DRAW_INSUFFICIENT_MATERIAL ==
+        do_play(white_to_play, black_to_play, board));
 }

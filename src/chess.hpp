@@ -1039,8 +1039,7 @@ board_state_t* fill_candidate_moves(
     return moves;
 }
 
-bool validate_board_state(const board_state_t& board)
-{
+bool validate_board_state(const board_state_t& board) {
     last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
     player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
     piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
@@ -1057,6 +1056,53 @@ bool validate_board_state(const board_state_t& board)
     return true;
 }
 
+bool check_draw_by_insufficient_material(const board_state_t& board) {
+    bool white_bishop_found = false;
+    bool white_knight_found = false;
+    bool black_bishop_found = false;
+    bool black_knight_found = false;
+    for (const auto field : board) {
+        switch (FIELD_GET_PIECE(field)) {
+            case PIECE_EMPTY:
+            case PIECE_KING: break;
+            case PIECE_BISHOP: {
+                if (PLAYER_WHITE == FIELD_GET_PLAYER(field)) {
+                    if (white_bishop_found or white_knight_found) {
+                        return false;
+                    } else {
+                        white_bishop_found = true;
+                    }
+                } else {
+                    if (black_bishop_found or black_knight_found) {
+                        return false;
+                    } else {
+                        black_bishop_found = true;
+                    }
+                }
+                break;
+            }
+            case PIECE_KNIGHT: {
+                if (PLAYER_WHITE == FIELD_GET_PLAYER(field)) {
+                    if (white_knight_found or white_bishop_found) {
+                        return false;
+                    } else {
+                        white_knight_found = true;
+                    }
+                } else {
+                    if (black_knight_found or black_bishop_found) {
+                        return false;
+                    } else {
+                        black_knight_found = true;
+                    }
+                }
+                break;
+            }
+            default: return false;
+        }
+    }
+    return true;
+}
+
 enum class game_action_t {
     MOVE, FORFEIT
 };
@@ -1066,7 +1112,7 @@ using request_move_f = game_action_t(*)(board_state_t&);
 enum class game_result_t {
     WHITE_WON_FORFEIT, WHITE_WON_CHECKMATE,
     BLACK_WON_FORFEIT, BLACK_WON_CHECKMATE,
-    DRAW_STALEMATE, ERROR
+    DRAW_STALEMATE, DRAW_INSUFFICIENT_MATERIAL, ERROR
 };
 
 struct null_log_t {
@@ -1112,6 +1158,9 @@ game_result_t play(void* memory, request_move_f white_move_fn, request_move_f bl
                 board = saved_board;
             }
         } while (!white_move_valid);
+        if (check_draw_by_insufficient_material(board))
+            return game_result_t::DRAW_INSUFFICIENT_MATERIAL;
+
         saved_board = board;
 
         candidate_moves_end = fill_candidate_moves(candidate_moves_beg, board, PLAYER_BLACK);
@@ -1137,6 +1186,9 @@ game_result_t play(void* memory, request_move_f white_move_fn, request_move_f bl
             }
         } while (!black_move_valid);
         saved_board = board;
+
+        if (check_draw_by_insufficient_material(board))
+            return game_result_t::DRAW_INSUFFICIENT_MATERIAL;
     } while (true);
 
     log << "Game ended with weird error.\n";
