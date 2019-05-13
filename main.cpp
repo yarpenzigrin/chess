@@ -1007,3 +1007,142 @@ TEST(CandidateMoves_King_White_ShortCastleNotPermittedDueToF1Attacked) {
     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
     ASSERT(!check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E1, G1 }));
 }
+
+TEST(CandidateMoves_King_White_ShortCastleNotPermittedDueToG1Attacked) {
+    auto board = prepare_board([](auto& board) {
+        board[A8] = FBK;
+        board[G8] = FBR;
+        board[E1] = FWK;
+        board[H1] = FWR;
+    });
+    auto c_moves = prepare_moves();
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    ASSERT(!check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E1, G1 }));
+}
+
+TEST(CandidateMoves_King_White_CastleNotPermittedDueToKingInCheck) {
+    auto board = prepare_board([](auto& board) {
+        board[A8] = FBK;
+        board[E8] = FBR;
+        board[E1] = FWK;
+        board[H1] = FWR;
+        board[A1] = FWR;
+    });
+    auto c_moves = prepare_moves();
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    ASSERT(!check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E1, G1 }));
+    ASSERT(!check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E1, C1 }));
+}
+
+TEST(CandidateMoves_King_White_LongCastleNotPermittedDueToD1Attacked) {
+    auto board = prepare_board([](auto& board) {
+        board[A8] = FBK;
+        board[D8] = FBR;
+        board[E1] = FWK;
+        board[H1] = FWR;
+    });
+    auto c_moves = prepare_moves();
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    ASSERT(!check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E1, C1 }));
+}
+
+TEST(CandidateMoves_King_White_LongCastleNotPermittedDueToC1Attacked) {
+    auto board = prepare_board([](auto& board) {
+        board[A8] = FBK;
+        board[C8] = FBR;
+        board[E1] = FWK;
+        board[H1] = FWR;
+    });
+    auto c_moves = prepare_moves();
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    ASSERT(!check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E1, C1 }));
+}
+
+TEST(CandidateMoves_King_Black_ShortCastleNotPermittedDueToF8Attacked) {
+    auto board = prepare_board([](auto& board) {
+        board[E8] = FBK;
+        board[H8] = FBR;
+        board[A1] = FWK;
+        board[F1] = FWR;
+    });
+    auto c_moves = prepare_moves();
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    ASSERT(!check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E1, G1 }));
+}
+
+TEST(CandidateMoves_King_Black_ShortCastleNotPermittedDueToG8Attacked) {
+    auto board = prepare_board([](auto& board) {
+        board[E8] = FBK;
+        board[H8] = FBR;
+        board[A1] = FWK;
+        board[G1] = FWR;
+    });
+    auto c_moves = prepare_moves();
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    ASSERT(!check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E1, G1 }));
+}
+
+TEST(CandidateMoves_King_Black_CastleNotPermittedDueToKingInCheck) {
+    auto board = prepare_board([](auto& board) {
+        board[E8] = FBK;
+        board[H8] = FBR;
+        board[A1] = FBR;
+        board[B1] = FWK;
+        board[E1] = FWR;
+    });
+    auto c_moves = prepare_moves();
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    ASSERT(!check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E1, G1 }));
+    ASSERT(!check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E1, C1 }));
+}
+
+TEST(CandidateMoves_King_Black_LongCastleNotPermittedDueToD8Attacked) {
+    auto board = prepare_board([](auto& board) {
+        board[E8] = FBK;
+        board[A8] = FBR;
+        board[H1] = FWK;
+        board[D1] = FWR;
+    });
+    auto c_moves = prepare_moves();
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    ASSERT(!check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E1, C1 }));
+}
+
+TEST(CandidateMoves_King_Black_LongCastleNotPermittedDueToC8Attacked) {
+    auto board = prepare_board([](auto& board) {
+        board[E8] = FBK;
+        board[A8] = FBR;
+        board[H1] = FWK;
+        board[C1] = FWR;
+    });
+    auto c_moves = prepare_moves();
+    const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
+    const auto* c_moves_beg = c_moves.get();
+
+    ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
+    ASSERT(!check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E1, C1 }));
+}

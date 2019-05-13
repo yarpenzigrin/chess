@@ -888,7 +888,10 @@ board_state_t* fill_black_short_castle(
         PIECE_ROOK != FIELD_GET_PIECE(board[H8]) or
         PIECE_EMPTY != FIELD_GET_PIECE(board[F8]) or
         PIECE_EMPTY != FIELD_GET_PIECE(board[G8]) or
-        !CASTLING_RIGHTS_BLACK_SHORT(BOARD_STATE_META_GET_CASTLING_RIGHTS(board)))
+        !CASTLING_RIGHTS_BLACK_SHORT(BOARD_STATE_META_GET_CASTLING_RIGHTS(board)) or
+        FIELD_UNDER_WHITE_ATTACK(board[E8]) or
+        FIELD_UNDER_WHITE_ATTACK(board[F8]) or
+        FIELD_UNDER_WHITE_ATTACK(board[G8]))
         return moves;
 
     auto& move = *moves = board;
@@ -915,7 +918,10 @@ board_state_t* fill_white_long_castle(
         PIECE_EMPTY != FIELD_GET_PIECE(board[B1]) or
         PIECE_EMPTY != FIELD_GET_PIECE(board[C1]) or
         PIECE_EMPTY != FIELD_GET_PIECE(board[D1]) or
-        !CASTLING_RIGHTS_WHITE_LONG(BOARD_STATE_META_GET_CASTLING_RIGHTS(board)))
+        !CASTLING_RIGHTS_WHITE_LONG(BOARD_STATE_META_GET_CASTLING_RIGHTS(board)) or
+        FIELD_UNDER_BLACK_ATTACK(board[C1]) or
+        FIELD_UNDER_BLACK_ATTACK(board[D1]) or
+        FIELD_UNDER_BLACK_ATTACK(board[E1]))
         return moves;
 
     auto& move = *moves = board;
