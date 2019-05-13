@@ -795,12 +795,10 @@ TEST(CandidateMoves_King_Black_InvalidMoves_ValidMoves_Captures) {
             return PLAYER_BLACK == last_move_player and PIECE_KING == last_move_piece;
         });
 
-    ASSERT(7u == black_king_moves);
+    ASSERT(5u == black_king_moves);
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E4, D3 }));
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E4, E3 }));
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E4, F3 }));
-    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E4, D4 }));
-    ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E4, F4 }));
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E4, D5 }));
     ASSERT(check_candidate_move(c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E4, F5 }));
 }
@@ -1011,7 +1009,7 @@ TEST(CandidateMoves_King_White_ShortCastleNotPermittedDueToF1Attacked) {
 TEST(CandidateMoves_King_White_ShortCastleNotPermittedDueToG1Attacked) {
     auto board = prepare_board([](auto& board) {
         board[A8] = FBK;
-        board[G8] = FBR;
+        board[G8] = FBQ;
         board[E1] = FWK;
         board[H1] = FWR;
     });
@@ -1026,7 +1024,7 @@ TEST(CandidateMoves_King_White_ShortCastleNotPermittedDueToG1Attacked) {
 TEST(CandidateMoves_King_White_CastleNotPermittedDueToKingInCheck) {
     auto board = prepare_board([](auto& board) {
         board[A8] = FBK;
-        board[E8] = FBR;
+        board[D2] = FBP;
         board[E1] = FWK;
         board[H1] = FWR;
         board[A1] = FWR;
@@ -1043,7 +1041,7 @@ TEST(CandidateMoves_King_White_CastleNotPermittedDueToKingInCheck) {
 TEST(CandidateMoves_King_White_LongCastleNotPermittedDueToD1Attacked) {
     auto board = prepare_board([](auto& board) {
         board[A8] = FBK;
-        board[D8] = FBR;
+        board[A4] = FBB;
         board[E1] = FWK;
         board[H1] = FWR;
     });
@@ -1058,7 +1056,7 @@ TEST(CandidateMoves_King_White_LongCastleNotPermittedDueToD1Attacked) {
 TEST(CandidateMoves_King_White_LongCastleNotPermittedDueToC1Attacked) {
     auto board = prepare_board([](auto& board) {
         board[A8] = FBK;
-        board[C8] = FBR;
+        board[A2] = FBN;
         board[E1] = FWK;
         board[H1] = FWR;
     });
@@ -1090,7 +1088,7 @@ TEST(CandidateMoves_King_Black_ShortCastleNotPermittedDueToG8Attacked) {
         board[E8] = FBK;
         board[H8] = FBR;
         board[A1] = FWK;
-        board[G1] = FWR;
+        board[H7] = FWP;
     });
     auto c_moves = prepare_moves();
     const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
@@ -1106,7 +1104,7 @@ TEST(CandidateMoves_King_Black_CastleNotPermittedDueToKingInCheck) {
         board[H8] = FBR;
         board[A1] = FBR;
         board[B1] = FWK;
-        board[E1] = FWR;
+        board[H4] = FWQ;
     });
     auto c_moves = prepare_moves();
     const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
@@ -1122,7 +1120,7 @@ TEST(CandidateMoves_King_Black_LongCastleNotPermittedDueToD8Attacked) {
         board[E8] = FBK;
         board[A8] = FBR;
         board[H1] = FWK;
-        board[D1] = FWR;
+        board[G5] = FWB;
     });
     auto c_moves = prepare_moves();
     const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
@@ -1136,8 +1134,7 @@ TEST(CandidateMoves_King_Black_LongCastleNotPermittedDueToC8Attacked) {
     auto board = prepare_board([](auto& board) {
         board[E8] = FBK;
         board[A8] = FBR;
-        board[H1] = FWK;
-        board[C1] = FWR;
+        board[B7] = FWK;
     });
     auto c_moves = prepare_moves();
     const auto* c_moves_end = fill_candidate_moves(c_moves.get(), board, PLAYER_WHITE);
