@@ -1184,7 +1184,7 @@ bool check_draw_by_insufficient_material(const board_state_t& board) {
     return true;
 }
 
-constexpr std::size_t MOVE_HISTORY_SIZE = 20;
+constexpr std::size_t MOVE_HISTORY_SIZE = 50;
 using move_history_t = detail::ring_buffer_s<board_state_t, MOVE_HISTORY_SIZE>;
 
 bool compare_simple_position(const board_state_t& lhs, const board_state_t& rhs) {
@@ -1212,6 +1212,22 @@ bool check_draw_by_threefold_repetition(const board_state_t& board, move_history
     return false;
 }
 
+void update_insignificant_move_cnt(std::size_t& insignificant_move_cnt,
+    const board_state_t& new_position, const board_state_t& previous_position) {
+    last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(new_position);
+    if (PIECE_PAWN == LAST_MOVE_GET_PIECE(last_move)) {
+        insignificant_move_cnt = 0;
+    } else {
+        player_t player = LAST_MOVE_GET_PLAYER(last_move);
+        field_t target_field = LAST_MOVE_GET_TO(last_move);
+        if (PIECE_EMPTY != FIELD_GET_PIECE(previous_position[target_field]) and
+            player != FIELD_GET_PLAYER(previous_position[target_field])) {
+            insignificant_move_cnt = 0;
+        }
+    }
+    ++insignificant_move_cnt;
+}
+
 enum class game_action_t {
     MOVE, FORFEIT
 };
@@ -1221,7 +1237,7 @@ using request_move_f = game_action_t(*)(board_state_t&);
 enum class game_result_t {
     WHITE_WON_FORFEIT, WHITE_WON_CHECKMATE,
     BLACK_WON_FORFEIT, BLACK_WON_CHECKMATE,
-    DRAW_STALEMATE, DRAW_INSUFFICIENT_MATERIAL, DRAW_REPETITION,
+    DRAW_STALEMATE, DRAW_INSUFFICIENT_MATERIAL, DRAW_REPETITION, DRAW_50_MOVE_RULE,
     ERROR
 };
 
@@ -1249,6 +1265,7 @@ game_result_t play(void* memory, request_move_f white_move_fn, request_move_f bl
     board_state_t* candidate_moves_end = candidate_moves_beg;
     board_state_t saved_board = board;
     game_action_t last_action = game_action_t::MOVE;
+    std::size_t insignificant_move_cnt = 0;
     log << "Game started.\n";
     do {
         candidate_moves_end = fill_candidate_moves(candidate_moves_beg, board, PLAYER_WHITE);
@@ -1278,6 +1295,9 @@ game_result_t play(void* memory, request_move_f white_move_fn, request_move_f bl
             return game_result_t::DRAW_INSUFFICIENT_MATERIAL;
         if (check_draw_by_threefold_repetition(board, move_history))
             return game_result_t::DRAW_REPETITION;
+        update_insignificant_move_cnt(insignificant_move_cnt, board, saved_board);
+        if (insignificant_move_cnt >= 50)
+            return game_result_t::DRAW_50_MOVE_RULE;
 
         saved_board = board;
 
@@ -1309,6 +1329,9 @@ game_result_t play(void* memory, request_move_f white_move_fn, request_move_f bl
             return game_result_t::DRAW_INSUFFICIENT_MATERIAL;
         if (check_draw_by_threefold_repetition(board, move_history))
             return game_result_t::DRAW_REPETITION;
+        update_insignificant_move_cnt(insignificant_move_cnt, board, saved_board);
+        if (insignificant_move_cnt >= 50)
+            return game_result_t::DRAW_50_MOVE_RULE;
     } while (true);
 
     log << "Game ended with weird error.\n";

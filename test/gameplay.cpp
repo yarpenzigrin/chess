@@ -1,4 +1,5 @@
 #include <memory>
+#include <thread>
 #include "chess_tty_gui.hpp"
 #include "chesstest.hpp"
 
@@ -22,7 +23,7 @@ game_action_t dummy_move_req(board_state_t& board) {
 }
 
 std::unique_ptr<board_state_t[]> prepare_game_memory() {
-    return std::make_unique<board_state_t[]>(64);
+    return std::make_unique<board_state_t[]>(128);
 }
 
 struct test_logger_t {
@@ -360,4 +361,160 @@ TEST(Gameplay_Play_AfterBlackMove_DrawByThreeFoldRepetitionDancingKings) {
         { PLAYER_BLACK, PIECE_KING, D5, E5 }   // 3rd
     });
     ASSERT(game_result_t::DRAW_REPETITION == do_play(white_to_play, black_to_play, board));
+}
+
+TEST(Gameplay_Play_AfterWhiteMove_DrawBy50MoveRule) {
+    auto board = prepare_board([](auto& board){
+        board[B3] = FWK;
+        board[B6] = FBK;
+        board[H4] = FWP;
+        board[H5] = FBP;
+        board[H1] = FWB;
+        board[A1] = FBB;
+    });
+    BOARD_STATE_META_SET_CASTLING_RIGHTS(board, 0b1111);
+    
+    std::vector<move_s> white_loop_1st_half = {
+        { PLAYER_WHITE, PIECE_BISHOP, H1, G2 },
+        { PLAYER_WHITE, PIECE_BISHOP, G2, F3 },
+        { PLAYER_WHITE, PIECE_BISHOP, F3, E4 },
+        { PLAYER_WHITE, PIECE_BISHOP, E4, D5 },
+        { PLAYER_WHITE, PIECE_BISHOP, D5, C6 },
+        { PLAYER_WHITE, PIECE_BISHOP, C6, B7 },
+        { PLAYER_WHITE, PIECE_BISHOP, B7, A8 }
+    };
+    std::vector<move_s> white_loop_2nd_half = {
+        { PLAYER_WHITE, PIECE_BISHOP, A8, B7 },
+        { PLAYER_WHITE, PIECE_BISHOP, B7, C6 },
+        { PLAYER_WHITE, PIECE_BISHOP, C6, D5 },
+        { PLAYER_WHITE, PIECE_BISHOP, D5, E4 },
+        { PLAYER_WHITE, PIECE_BISHOP, E4, F3 },
+        { PLAYER_WHITE, PIECE_BISHOP, F3, G2 },
+        { PLAYER_WHITE, PIECE_BISHOP, G2, H1 },
+    };
+    std::vector<move_s> black_loop_1st_half = {
+        { PLAYER_BLACK, PIECE_BISHOP, A1, B2 },
+        { PLAYER_BLACK, PIECE_BISHOP, B2, C3 },
+        { PLAYER_BLACK, PIECE_BISHOP, C3, D4 },
+        { PLAYER_BLACK, PIECE_BISHOP, D4, E5 },
+        { PLAYER_BLACK, PIECE_BISHOP, E5, F6 },
+        { PLAYER_BLACK, PIECE_BISHOP, F6, G7 },
+        { PLAYER_BLACK, PIECE_BISHOP, G7, H8 }
+    };
+    std::vector<move_s> black_loop_2nd_half = {
+        { PLAYER_BLACK, PIECE_BISHOP, H8, G7 },
+        { PLAYER_BLACK, PIECE_BISHOP, G7, F6 },
+        { PLAYER_BLACK, PIECE_BISHOP, F6, E5 },
+        { PLAYER_BLACK, PIECE_BISHOP, E5, D4 },
+        { PLAYER_BLACK, PIECE_BISHOP, D4, C3 },
+        { PLAYER_BLACK, PIECE_BISHOP, C3, B2 },
+        { PLAYER_BLACK, PIECE_BISHOP, B2, A1 },
+    };
+
+    std::vector<move_s> white_moves;
+    white_moves.insert(white_moves.end(), white_loop_1st_half.begin(), white_loop_1st_half.end());
+    white_moves.push_back({ PLAYER_WHITE, PIECE_KING, B3, A2 });
+    white_moves.insert(white_moves.end(), white_loop_2nd_half.begin(), white_loop_2nd_half.end());
+    white_moves.push_back({ PLAYER_WHITE, PIECE_KING, A2, B1 });
+    white_moves.insert(white_moves.end(), white_loop_1st_half.begin(), white_loop_1st_half.end());
+    white_moves.push_back({ PLAYER_WHITE, PIECE_KING, B1, C2 });
+    white_moves.insert(white_moves.end(), white_loop_2nd_half.begin(), white_loop_2nd_half.end());
+    ASSERT(25u < white_moves.size());
+    white_moves.erase(white_moves.begin() + 25u, white_moves.end());
+    ASSERT(25u == white_moves.size());
+
+    std::vector<move_s> black_moves;
+    black_moves.insert(black_moves.end(), black_loop_1st_half.begin(), black_loop_1st_half.end());
+    black_moves.push_back({ PLAYER_BLACK, PIECE_KING, B6, A7 });
+    black_moves.insert(black_moves.end(), black_loop_2nd_half.begin(), black_loop_2nd_half.end());
+    black_moves.push_back({ PLAYER_BLACK, PIECE_KING, A7, B8 });
+    black_moves.insert(black_moves.end(), black_loop_1st_half.begin(), black_loop_1st_half.end());
+    black_moves.push_back({ PLAYER_BLACK, PIECE_KING, B8, C7 });
+    black_moves.insert(black_moves.end(), black_loop_2nd_half.begin(), black_loop_2nd_half.end());
+    ASSERT(25u < black_moves.size());
+    black_moves.erase(black_moves.begin() + 25u, black_moves.end());
+    ASSERT(25u == black_moves.size());
+
+    fill_white_move_seq(white_moves);
+    fill_black_move_seq(black_moves);
+    ASSERT(game_result_t::DRAW_50_MOVE_RULE == do_play(white_to_play, black_to_play, board));
+}
+
+TEST(Gameplay_Play_AfterBlackMove_DrawBy50MoveRule) {
+    auto board = prepare_board([](auto& board){
+        board[B4] = FWK;
+        board[B3] = FBN;
+        board[B6] = FBK;
+        board[H4] = FWP;
+        board[H5] = FBP;
+        board[H1] = FWB;
+        board[A1] = FBB;
+    });
+    BOARD_STATE_META_SET_CASTLING_RIGHTS(board, 0b1111);
+    
+    std::vector<move_s> white_loop_1st_half = {
+        { PLAYER_WHITE, PIECE_BISHOP, H1, G2 },
+        { PLAYER_WHITE, PIECE_BISHOP, G2, F3 },
+        { PLAYER_WHITE, PIECE_BISHOP, F3, E4 },
+        { PLAYER_WHITE, PIECE_BISHOP, E4, D5 },
+        { PLAYER_WHITE, PIECE_BISHOP, D5, C6 },
+        { PLAYER_WHITE, PIECE_BISHOP, C6, B7 },
+        { PLAYER_WHITE, PIECE_BISHOP, B7, A8 }
+    };
+    std::vector<move_s> white_loop_2nd_half = {
+        { PLAYER_WHITE, PIECE_BISHOP, A8, B7 },
+        { PLAYER_WHITE, PIECE_BISHOP, B7, C6 },
+        { PLAYER_WHITE, PIECE_BISHOP, C6, D5 },
+        { PLAYER_WHITE, PIECE_BISHOP, D5, E4 },
+        { PLAYER_WHITE, PIECE_BISHOP, E4, F3 },
+        { PLAYER_WHITE, PIECE_BISHOP, F3, G2 },
+        { PLAYER_WHITE, PIECE_BISHOP, G2, H1 },
+    };
+    std::vector<move_s> black_loop_1st_half = {
+        { PLAYER_BLACK, PIECE_BISHOP, A1, B2 },
+        { PLAYER_BLACK, PIECE_BISHOP, B2, C3 },
+        { PLAYER_BLACK, PIECE_BISHOP, C3, D4 },
+        { PLAYER_BLACK, PIECE_BISHOP, D4, E5 },
+        { PLAYER_BLACK, PIECE_BISHOP, E5, F6 },
+        { PLAYER_BLACK, PIECE_BISHOP, F6, G7 },
+        { PLAYER_BLACK, PIECE_BISHOP, G7, H8 }
+    };
+    std::vector<move_s> black_loop_2nd_half = {
+        { PLAYER_BLACK, PIECE_BISHOP, H8, G7 },
+        { PLAYER_BLACK, PIECE_BISHOP, G7, F6 },
+        { PLAYER_BLACK, PIECE_BISHOP, F6, E5 },
+        { PLAYER_BLACK, PIECE_BISHOP, E5, D4 },
+        { PLAYER_BLACK, PIECE_BISHOP, D4, C3 },
+        { PLAYER_BLACK, PIECE_BISHOP, C3, B2 },
+        { PLAYER_BLACK, PIECE_BISHOP, B2, A1 },
+    };
+
+    std::vector<move_s> white_moves;
+    white_moves.push_back({ PLAYER_WHITE, PIECE_KING, B4, B3 });
+    white_moves.insert(white_moves.end(), white_loop_1st_half.begin(), white_loop_1st_half.end());
+    white_moves.push_back({ PLAYER_WHITE, PIECE_KING, B3, A2 });
+    white_moves.insert(white_moves.end(), white_loop_2nd_half.begin(), white_loop_2nd_half.end());
+    white_moves.push_back({ PLAYER_WHITE, PIECE_KING, A2, B1 });
+    white_moves.insert(white_moves.end(), white_loop_1st_half.begin(), white_loop_1st_half.end());
+    white_moves.push_back({ PLAYER_WHITE, PIECE_KING, B1, C2 });
+    white_moves.insert(white_moves.end(), white_loop_2nd_half.begin(), white_loop_2nd_half.end());
+    ASSERT(26u < white_moves.size());
+    white_moves.erase(white_moves.begin() + 26u, white_moves.end());
+    ASSERT(26u == white_moves.size());
+
+    std::vector<move_s> black_moves;
+    black_moves.insert(black_moves.end(), black_loop_1st_half.begin(), black_loop_1st_half.end());
+    black_moves.push_back({ PLAYER_BLACK, PIECE_KING, B6, A7 });
+    black_moves.insert(black_moves.end(), black_loop_2nd_half.begin(), black_loop_2nd_half.end());
+    black_moves.push_back({ PLAYER_BLACK, PIECE_KING, A7, B8 });
+    black_moves.insert(black_moves.end(), black_loop_1st_half.begin(), black_loop_1st_half.end());
+    black_moves.push_back({ PLAYER_BLACK, PIECE_KING, B8, C7 });
+    black_moves.insert(black_moves.end(), black_loop_2nd_half.begin(), black_loop_2nd_half.end());
+    ASSERT(25u < black_moves.size());
+    black_moves.erase(black_moves.begin() + 25u, black_moves.end());
+    ASSERT(25u == black_moves.size());
+
+    fill_white_move_seq(white_moves);
+    fill_black_move_seq(black_moves);
+    ASSERT(game_result_t::DRAW_50_MOVE_RULE == do_play(white_to_play, black_to_play, board));
 }
