@@ -311,6 +311,7 @@ TEST(Gameplay_Play_AfterWhiteMove_DrawByThreeFoldRepetitionWithPerpetualCheck) {
         board[E2] = FWK;
     });
     BOARD_STATE_META_SET_CASTLING_RIGHTS(board, 0b1111);
+    // REPEATED POSITION: Queen C8 - King A8
     fill_white_move_seq({
         { PLAYER_WHITE, PIECE_QUEEN, C5, C8 }, // 1st occurrence of the same position
         { PLAYER_WHITE, PIECE_QUEEN, C8, C7 },
@@ -323,6 +324,40 @@ TEST(Gameplay_Play_AfterWhiteMove_DrawByThreeFoldRepetitionWithPerpetualCheck) {
         { PLAYER_BLACK, PIECE_KING, A7, A8 },
         { PLAYER_BLACK, PIECE_KING, A8, A7 },
         { PLAYER_BLACK, PIECE_KING, A7, A8 }
+    });
+    ASSERT(game_result_t::DRAW_REPETITION == do_play(white_to_play, black_to_play, board));
+}
+
+TEST(Gameplay_Play_AfterBlackMove_DrawByThreeFoldRepetitionDancingKings) {
+    auto board = prepare_board([](auto& board){
+        board[E2] = FWK;
+        board[E6] = FBK;
+        board[H4] = FWP;
+        board[H5] = FBP;
+    });
+    BOARD_STATE_META_SET_CASTLING_RIGHTS(board, 0b1111);
+    // REPEATED POSITION: Kings on E3 and E5
+    fill_white_move_seq({
+        { PLAYER_WHITE, PIECE_KING, E2, E3 },
+        { PLAYER_WHITE, PIECE_KING, E3, F3 },
+        { PLAYER_WHITE, PIECE_KING, F3, E3 },
+        { PLAYER_WHITE, PIECE_KING, E3, E2 },
+        { PLAYER_WHITE, PIECE_KING, E2, E3 },
+        { PLAYER_WHITE, PIECE_KING, E3, F3 },
+        { PLAYER_WHITE, PIECE_KING, F3, E3 },
+        { PLAYER_WHITE, PIECE_KING, E3, E2 },
+        { PLAYER_WHITE, PIECE_KING, E2, E3 }
+    });
+    fill_black_move_seq({
+        { PLAYER_BLACK, PIECE_KING, E6, E5 },  // 1st occurrence of the same position
+        { PLAYER_BLACK, PIECE_KING, E5, D5 },
+        { PLAYER_BLACK, PIECE_KING, D5, C5 },
+        { PLAYER_BLACK, PIECE_KING, C5, D5 },
+        { PLAYER_BLACK, PIECE_KING, D5, E5 },  // 2nd
+        { PLAYER_BLACK, PIECE_KING, E5, D5 },
+        { PLAYER_BLACK, PIECE_KING, D5, C5 },
+        { PLAYER_BLACK, PIECE_KING, C5, D5 },
+        { PLAYER_BLACK, PIECE_KING, D5, E5 }   // 3rd
     });
     ASSERT(game_result_t::DRAW_REPETITION == do_play(white_to_play, black_to_play, board));
 }
