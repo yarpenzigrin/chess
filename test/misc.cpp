@@ -38,4 +38,10 @@ TEST(Misc_RingBufferStringContainerOfSize5) {
     ASSERT(sum_strings(buffer) == "MIFASOLASI");
     ring_buffer_add(buffer, "DO"s);
     ASSERT(sum_strings(buffer) == "FASOLASIDO");
+    ring_buffer_add(buffer, "DO"s);
+    ASSERT(sum_strings(buffer) == "SOLASIDODO");
+    ring_buffer_add(buffer, "SI"s);
+    ASSERT(sum_strings(buffer) == "LASIDODOSI");
+    ring_buffer_add(buffer, "LA"s);
+    ASSERT(sum_strings(buffer) == "SIDODOSILA");
 }

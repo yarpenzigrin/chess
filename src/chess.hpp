@@ -41,77 +41,62 @@ namespace detail
 
 template <typename T, std::size_t N>
 struct ring_buffer_s {
+    static constexpr std::size_t max_size = N;
+
     T* storage;
+    std::size_t size = 0;
     std::size_t start_idx = 0;
-    std::size_t past_end_idx = 1;
 };
 
 template <typename T, std::size_t N>
-void ring_buffer_add(ring_buffer_s<T, N>& buffer, T&& value) {
-    if (buffer.start_idx == 0 and buffer.past_end_idx <= N) {
-        buffer.storage[buffer.past_end_idx - 1] = std::forward<T>(value);
-        ++buffer.past_end_idx;
-    } else if (buffer.start_idx > 0 and buffer.start_idx < N) {
-        buffer.storage[buffer.past_end_idx - 1] = std::forward<T>(value);
-        ++buffer.past_end_idx;
-        ++buffer.start_idx;
-    } else if (buffer.past_end_idx > N) {
-        buffer.storage[0] = std::forward<T>(value);
-        buffer.past_end_idx = 2;
-        buffer.start_idx = 1;
-    }
+constexpr bool ring_buffer_rolling(const ring_buffer_s<T, N>& buffer) {
+    return buffer.size == buffer.max_size;
 }
 
-template <typename T, std::size_t N>
-void ring_buffer_add(ring_buffer_s<T, N>& buffer, const T& value) {
-    if (buffer.start_idx == 0 and buffer.past_end_idx <= N) {
-        buffer.storage[buffer.past_end_idx - 1] = value;
-        ++buffer.past_end_idx;
-    } else if (buffer.start_idx > 0 and buffer.start_idx < N) {
-        buffer.storage[buffer.past_end_idx - 1] = value;
-        ++buffer.past_end_idx;
-        ++buffer.start_idx;
-    } else if (buffer.past_end_idx > N) {
-        buffer.storage[0] = value;
-        buffer.past_end_idx = 2;
-        buffer.start_idx = 1;
-    }
-}
-
-template <typename T, std::size_t N>
-std::size_t ring_buffer_size(const ring_buffer_s<T, N>& buffer) {
-    return buffer.start_idx == 0 ? buffer.past_end_idx - 1 : N;
-}
-
-template <typename T, std::size_t N>
-constexpr std::size_t ring_buffer_max_size(const ring_buffer_s<T, N>& buffer) {
-    return N;
-}
-
-template <typename T, std::size_t N>
-T* ring_buffer_begin(const ring_buffer_s<T, N>& buffer) {
-    return buffer.storage + buffer.start_idx;
-}
-
-template <typename T, std::size_t N>
-T* ring_buffer_end(const ring_buffer_s<T, N>& buffer) {
-    return buffer.storage + buffer.past_end_idx - 1;
-}
-
-template <typename T, std::size_t N>
-T* ring_buffer_next(const ring_buffer_s<T, N>& buffer, T* iter) {
-    std::size_t pos = iter - buffer.storage;
-    if (N - 1 == pos and buffer.start_idx > 0) {
-        return buffer.storage;
+template <typename T, std::size_t N, typename U>
+void ring_buffer_add(ring_buffer_s<T, N>& buffer, U&& value) {
+    // printf("%s: MS = %ld, S = %ld, IDX = %ld, rolling = %d\n",
+    //     __FUNCTION__, buffer.max_size, buffer.size, buffer.start_idx, ring_buffer_rolling(buffer));
+    if (ring_buffer_rolling(buffer)) {
+        buffer.storage[buffer.start_idx++] = std::forward<U>(value);
+        buffer.start_idx = buffer.start_idx % buffer.max_size;
     } else {
-        return iter + 1;
+        buffer.storage[buffer.size++] = std::forward<U>(value);
     }
 }
 
-#define RING_BUFFER_FOREACH(buffer, it)                                                            \
-    auto it = ring_buffer_begin(buffer);                                                           \
-    auto end_cond = (ring_buffer_size(buffer) == 0 ? it : nullptr);                                \
-    for (; it != end_cond; it = ring_buffer_next(buffer, it), end_cond = ring_buffer_end(buffer))
+template <typename T, std::size_t N>
+constexpr T* ring_buffer_begin(const ring_buffer_s<T, N>& buffer) {
+    return buffer.size ? buffer.storage + buffer.start_idx : nullptr;
+}
+
+template <typename T, std::size_t N>
+constexpr T* ring_buffer_end(const ring_buffer_s<T, N>& buffer) {
+    return nullptr;
+}
+
+template <typename T, std::size_t N>
+constexpr T* ring_buffer_next(const ring_buffer_s<T, N>& buffer, T* const iter) {
+    std::size_t pos = iter - buffer.storage;
+    // printf("%s: MS = %ld, S = %ld, IDX = %ld, POS = %ld, rolling = %d\n",
+    //     __FUNCTION__, buffer.max_size, buffer.size, buffer.start_idx, pos, ring_buffer_rolling(buffer));
+    if (ring_buffer_rolling(buffer)) {
+        if (0 == buffer.start_idx) {
+            return pos < buffer.size - 1 ? iter + 1 : nullptr;
+        } else if (pos == buffer.size - 1) {
+            return buffer.storage;
+        } else {
+            return (pos == buffer.start_idx - 1) ? nullptr : iter + 1;
+        }
+    } else {
+        return pos < buffer.size - 1 ? iter + 1 : nullptr;
+    }
+}
+
+#define RING_BUFFER_FOREACH(buffer, it)       \
+    for (auto it = ring_buffer_begin(buffer); \
+         it != ring_buffer_end(buffer);       \
+         it = ring_buffer_next(buffer, it))
 
 }  // detail
 
@@ -119,6 +104,10 @@ using player_t = uint8_t;
 
 constexpr player_t PLAYER_WHITE =    1;
 constexpr player_t PLAYER_BLACK =    0;
+
+constexpr player_t PLAYER_OPP(const player_t player) {
+    return PLAYER_WHITE == player ? PLAYER_BLACK : PLAYER_WHITE;
+}
 
 using piece_t = uint8_t;
 
@@ -1085,6 +1074,7 @@ board_state_t* fill_king_candidate_moves(
 
 board_state_t* fill_candidate_moves(
     board_state_t* moves, const board_state_t& board, const player_t player) {
+    auto temp_moves = moves;
     for (uint8_t field_idx = static_cast<uint8_t>(FIELD_START);
          field_idx < static_cast<uint8_t>(FIELD_STOP);
          ++field_idx) {
@@ -1117,6 +1107,7 @@ board_state_t* fill_candidate_moves(
             moves = fill_king_candidate_moves(moves, board, player, field);
         }
     }
+    // printf("!!! %d candidate moves found !!!\n", moves - temp_moves);
     return moves;
 }
 
@@ -1261,11 +1252,12 @@ game_result_t play(void* memory, request_move_f white_move_fn, request_move_f bl
     move_history_t move_history;
     move_history.storage = move_storage;
 
-    board_state_t* candidate_moves_beg = move_storage + ring_buffer_max_size(move_history);
+    board_state_t* candidate_moves_beg = move_storage + move_history.max_size;
     board_state_t* candidate_moves_end = candidate_moves_beg;
     board_state_t saved_board = board;
     game_action_t last_action = game_action_t::MOVE;
     std::size_t insignificant_move_cnt = 0;
+    std::size_t move_cnt = 0;
     log << "Game started.\n";
     do {
         candidate_moves_end = fill_candidate_moves(candidate_moves_beg, board, PLAYER_WHITE);
@@ -1275,8 +1267,9 @@ game_result_t play(void* memory, request_move_f white_move_fn, request_move_f bl
                 : game_result_t::DRAW_STALEMATE;
 
         bool white_move_valid = false;
+        ++move_cnt;
         do {
-            log << "White to move.\n";
+            log << move_cnt << ". White to move.\n";
             last_action = white_move_fn(board);
             if (game_action_t::FORFEIT == last_action)
                 return game_result_t::BLACK_WON_FORFEIT;
@@ -1289,6 +1282,7 @@ game_result_t play(void* memory, request_move_f white_move_fn, request_move_f bl
             if (!white_move_valid) {
                 log << "Illegal move from white rejected.\n";
                 board = saved_board;
+                // return game_result_t::ERROR;
             }
         } while (!white_move_valid);
         if (check_draw_by_insufficient_material(board))
@@ -1307,8 +1301,9 @@ game_result_t play(void* memory, request_move_f white_move_fn, request_move_f bl
                 ? game_result_t::WHITE_WON_CHECKMATE
                 : game_result_t::DRAW_STALEMATE;
         bool black_move_valid = false;
+        ++move_cnt;
         do {
-            log << "Black to move.\n";
+            log << move_cnt << ". Black to move.\n";
             last_action = black_move_fn(board);
             if (game_action_t::FORFEIT == last_action)
                 return game_result_t::WHITE_WON_FORFEIT;
@@ -1321,9 +1316,9 @@ game_result_t play(void* memory, request_move_f white_move_fn, request_move_f bl
             if (!black_move_valid) {
                 log << "Illegal move from black rejected.\n";
                 board = saved_board;
+                // return game_result_t::ERROR;
             }
         } while (!black_move_valid);
-        saved_board = board;
 
         if (check_draw_by_insufficient_material(board))
             return game_result_t::DRAW_INSUFFICIENT_MATERIAL;
@@ -1332,7 +1327,9 @@ game_result_t play(void* memory, request_move_f white_move_fn, request_move_f bl
         update_insignificant_move_cnt(insignificant_move_cnt, board, saved_board);
         if (insignificant_move_cnt >= 50)
             return game_result_t::DRAW_50_MOVE_RULE;
-    } while (true);
+        
+        saved_board = board;
+    } while (move_cnt < 500);
 
     log << "Game ended with weird error.\n";
     return game_result_t::ERROR;
