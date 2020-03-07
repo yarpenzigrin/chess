@@ -55,8 +55,6 @@ constexpr bool ring_buffer_rolling(const ring_buffer_s<T, N>& buffer) {
 
 template <typename T, std::size_t N, typename U>
 void ring_buffer_add(ring_buffer_s<T, N>& buffer, U&& value) {
-    // printf("%s: MS = %ld, S = %ld, IDX = %ld, rolling = %d\n",
-    //     __FUNCTION__, buffer.max_size, buffer.size, buffer.start_idx, ring_buffer_rolling(buffer));
     if (ring_buffer_rolling(buffer)) {
         buffer.storage[buffer.start_idx++] = std::forward<U>(value);
         buffer.start_idx = buffer.start_idx % buffer.max_size;
@@ -78,8 +76,6 @@ constexpr T* ring_buffer_end(const ring_buffer_s<T, N>& buffer) {
 template <typename T, std::size_t N>
 constexpr T* ring_buffer_next(const ring_buffer_s<T, N>& buffer, T* const iter) {
     std::size_t pos = iter - buffer.storage;
-    // printf("%s: MS = %ld, S = %ld, IDX = %ld, POS = %ld, rolling = %d\n",
-    //     __FUNCTION__, buffer.max_size, buffer.size, buffer.start_idx, pos, ring_buffer_rolling(buffer));
     if (ring_buffer_rolling(buffer)) {
         if (0 == buffer.start_idx) {
             return pos < buffer.size - 1 ? iter + 1 : nullptr;
@@ -100,17 +96,45 @@ constexpr T* ring_buffer_next(const ring_buffer_s<T, N>& buffer, T* const iter) 
 
 }  // detail
 
-using player_t = uint8_t;
+/** Basic field type
+ *  Bits contain metadata about field on the chessboard.
+ */
+using field_state_t = uint8_t;
 
-constexpr player_t PLAYER_WHITE =    1;
-constexpr player_t PLAYER_BLACK =    0;
+/** Field property descriptor
+ *  Contains information about how property is stored in `field_state_t` bits
+ */
+struct field_property_descriptor_s
+{
+    std::size_t bit_pos;
+    std::size_t bit_width;
+};
 
+/** Field property - player
+ *  Describes whether the field is occupied by white or black player's piece. If field has not
+ *  piece on it, this property should be ignored.
+ */
+using player_t = field_state_t;
+
+/** White player property value */
+constexpr player_t PLAYER_WHITE = 1;
+/** Black player property value */
+constexpr player_t PLAYER_BLACK = 0;
+/** Returns opposite player's property value */
 constexpr player_t PLAYER_OPP(const player_t player) {
     return ~player & 0b1;
 }
+/** Player property descriptor
+  * Occupies bit 0 of `field_state_t`
+  */
+constexpr field_property_descriptor_s FIELD_PLAYER_DESC = { 0, 1 };
 
-using piece_t = uint8_t;
+/** Field property - piece
+ *  Describes the piece that the field is occupied by or if the field is empty.
+ */
+using piece_t = field_state_t;
 
+/** Pieces property values */
 constexpr piece_t PIECE_EMPTY =     0b000;
 constexpr piece_t PIECE_PAWN =      0b001;
 constexpr piece_t PIECE_KNIGHT =    0b010;
@@ -119,82 +143,119 @@ constexpr piece_t PIECE_ROOK =      0b100;
 constexpr piece_t PIECE_QUEEN =     0b101;
 constexpr piece_t PIECE_KING =      0b110;
 constexpr piece_t PIECE_INVALID =   0b111;
+/** Piece property descriptor
+  * Occupies bits 1-3 of `field_state_t`
+  */
+constexpr field_property_descriptor_s FIELD_PIECE_DESC = { 1, 3 };
 
-using field_meta_bits_t = uint8_t;
+/** Field property - under white's attack
+ *  Describes whether the field is attached by any white player's piece.
+ */
+using under_white_attack_t = field_state_t;
+/** Under white attack property descriptor
+  * Occupies bit 4 of `field_state_t`
+  */
+constexpr field_property_descriptor_s FIELD_UNDER_WHITE_ATTACK_DESC = { 4, 1 };
 
-using field_state_t = uint8_t;
+/** Field property - under black's attack
+ *  Describes whether the field is attached by any black player's piece.
+ */
+using under_black_attack_t = field_state_t;
+/** Under black attack property descriptor
+  * Occupies bit 5 of `field_state_t`
+  */
+constexpr field_property_descriptor_s FIELD_UNDER_BLACK_ATTACK_DESC = { 5, 1 };
 
-constexpr std::size_t FIELD_PLAYER_POS = 0;
-constexpr std::size_t FIELD_PLAYER_SIZE = 1;
-constexpr std::size_t FIELD_PLAYER_WIDTH = 0b1;
-constexpr std::size_t FIELD_PLAYER_MASK = MASK(FIELD_PLAYER_POS);
-constexpr field_state_t FIELD_SET_PLAYER(field_state_t field, player_t player) {
-    return SET_VALUE(field, player, FIELD_PLAYER_POS, FIELD_PLAYER_MASK);
-}
-constexpr player_t FIELD_GET_PLAYER(field_state_t field) {
-    return (field & FIELD_PLAYER_MASK) >> FIELD_PLAYER_POS;
-}
+/** Field property - meta bits
+ *  Metabits from all fields of board combined together describe meta-state of the game
+ *  (not a field) - for example: castling rights.
+ */
+using field_meta_bits_t = field_state_t;
+/** Meta bits property descriptor
+  * Occupies bits 6-7 of `field_state_t`
+  */
+constexpr field_property_descriptor_s FIELD_META_BITS_DESC = { 6, 2 };
 
-constexpr std::size_t FIELD_PIECE_POS = 1;
-constexpr std::size_t FIELD_PIECE_SIZE = 3;
-constexpr std::size_t FIELD_PIECE_WIDTH = 0b111;
-constexpr std::size_t FIELD_PIECE_MASK = MASK(FIELD_PIECE_POS, FIELD_PIECE_WIDTH);
-constexpr field_state_t FIELD_SET_PIECE(field_state_t field, piece_t piece) {
-    return SET_VALUE(field, piece, FIELD_PIECE_POS, FIELD_PIECE_MASK);
+constexpr field_state_t field_property_mask(const field_property_descriptor_s desc)
+{
+    // Example:
+    // For descriptor = { bit_pos = 4, bit_width = 3 }
+    // Mask = ~( 0b10000000 | 0b00001111 ) = ~ 0b10001111 = 0b01110000
+    return ~(0xFF << (desc.bit_width + desc.bit_pos) | ~(0xFF << desc.bit_pos));
 }
-constexpr piece_t FIELD_GET_PIECE(field_state_t field) {
-    return (field & FIELD_PIECE_MASK) >> FIELD_PIECE_POS;
+constexpr field_state_t field_get_property(const field_state_t field,
+    const field_property_descriptor_s desc)
+{
+    // constexpr auto mask = field_property_mask(desc);
+    return (field & field_property_mask(desc)) >> desc.bit_pos;
 }
-
-constexpr std::size_t FIELD_UNDER_WHITE_ATTACK_POS = 4;
-constexpr std::size_t FIELD_UNDER_BLACK_ATTACK_POS = 5;
-constexpr field_state_t FIELD_SET_UNDER_WHITE_ATTACK(field_state_t field) {
-    return SET_BIT(field, FIELD_UNDER_WHITE_ATTACK_POS);
-}
-constexpr field_state_t FIELD_SET_UNDER_BLACK_ATTACK(field_state_t field) {
-    return SET_BIT(field, FIELD_UNDER_BLACK_ATTACK_POS);
-}
-constexpr field_state_t FIELD_CLEAR_UNDER_WHITE_ATTACK(field_state_t field) {
-    return CLEAR_BIT(field, FIELD_UNDER_WHITE_ATTACK_POS);
-}
-constexpr field_state_t FIELD_CLEAR_UNDER_BLACK_ATTACK(field_state_t field) {
-    return CLEAR_BIT(field, FIELD_UNDER_BLACK_ATTACK_POS);
-}
-constexpr bool FIELD_UNDER_WHITE_ATTACK(field_state_t field) {
-    return field & MASK(FIELD_UNDER_WHITE_ATTACK_POS);
-}
-constexpr bool FIELD_UNDER_BLACK_ATTACK(field_state_t field) {
-    return field & MASK(FIELD_UNDER_BLACK_ATTACK_POS);
+constexpr field_state_t field_set_property(const field_state_t field, const field_state_t prop,
+    const field_property_descriptor_s desc)
+{
+    // constexpr auto mask = field_property_mask(desc);
+    // constexpr auto shifted_prop = prop << desc.bit_pos;
+    return (field & ~field_property_mask(desc)) | (prop << desc.bit_pos);
 }
 
-constexpr std::size_t FIELD_META_BITS_POS = 6;
-constexpr std::size_t FIELD_META_BITS_SIZE = 2;
-constexpr std::size_t FIELD_META_BITS_WIDTH = 0b11;
-constexpr std::size_t FIELD_META_BITS_MASK = MASK(FIELD_META_BITS_POS, FIELD_META_BITS_WIDTH);
-constexpr field_state_t FIELD_SET_META_BITS(field_state_t field, field_meta_bits_t meta_bits) {
-    return SET_VALUE(field, meta_bits, FIELD_META_BITS_POS, FIELD_META_BITS_MASK);
+constexpr field_state_t field_get_player(const field_state_t field) {
+    return field_get_property(field, FIELD_PLAYER_DESC);
 }
-constexpr field_meta_bits_t FIELD_GET_META_BITS(field_state_t field) {
-    return (field & FIELD_META_BITS_MASK) >> FIELD_META_BITS_POS;
+constexpr field_state_t field_set_player(const field_state_t field, const player_t player) {
+    return field_set_property(field, player, FIELD_PLAYER_DESC);
+}
+
+constexpr field_state_t field_get_piece(const field_state_t field) {
+    return field_get_property(field, FIELD_PIECE_DESC);
+}
+constexpr field_state_t field_set_piece(const field_state_t field, const piece_t piece) {
+    return field_set_property(field, piece, FIELD_PIECE_DESC);
+}
+
+constexpr field_state_t field_set_under_white_attack(const field_state_t field) {
+    return field_set_property(field, 1, FIELD_UNDER_WHITE_ATTACK_DESC);
+}
+constexpr field_state_t field_clear_under_white_attack(const field_state_t field) {
+    return field_set_property(field, 0, FIELD_UNDER_WHITE_ATTACK_DESC);
+}
+constexpr bool field_under_white_attack(const field_state_t field) {
+    return field_get_property(field, FIELD_UNDER_WHITE_ATTACK_DESC);
+}
+
+constexpr field_state_t field_set_under_black_attack(const field_state_t field) {
+    return field_set_property(field, 1, FIELD_UNDER_BLACK_ATTACK_DESC);
+}
+constexpr field_state_t field_clear_under_black_attack(const field_state_t field) {
+    return field_set_property(field, 0, FIELD_UNDER_BLACK_ATTACK_DESC);
+}
+constexpr bool field_under_black_attack(const field_state_t field) {
+    return field_get_property(field, FIELD_UNDER_BLACK_ATTACK_DESC);
+}
+
+constexpr field_state_t field_get_meta_bits(const field_state_t field) {
+    return field_get_property(field, FIELD_META_BITS_DESC);
+}
+constexpr field_state_t field_set_meta_bits(const field_state_t field,
+    const field_meta_bits_t meta_bits) {
+    return field_set_property(field, meta_bits, FIELD_META_BITS_DESC);
 }
 
 constexpr field_state_t FF = 0;
+constexpr field_state_t FW = field_set_player(FF, PLAYER_WHITE);
+constexpr field_state_t FB = field_set_player(FF, PLAYER_BLACK);
 
-constexpr field_state_t FW = FIELD_SET_PLAYER(FF, PLAYER_WHITE);
-constexpr field_state_t FWP = FIELD_SET_PIECE(FW, PIECE_PAWN);
-constexpr field_state_t FWN = FIELD_SET_PIECE(FW, PIECE_KNIGHT);
-constexpr field_state_t FWB = FIELD_SET_PIECE(FW, PIECE_BISHOP);
-constexpr field_state_t FWR = FIELD_SET_PIECE(FW, PIECE_ROOK);
-constexpr field_state_t FWQ = FIELD_SET_PIECE(FW, PIECE_QUEEN);
-constexpr field_state_t FWK = FIELD_SET_PIECE(FW, PIECE_KING);
+constexpr field_state_t FWP = field_set_piece(FW, PIECE_PAWN);
+constexpr field_state_t FWN = field_set_piece(FW, PIECE_KNIGHT);
+constexpr field_state_t FWB = field_set_piece(FW, PIECE_BISHOP);
+constexpr field_state_t FWR = field_set_piece(FW, PIECE_ROOK);
+constexpr field_state_t FWQ = field_set_piece(FW, PIECE_QUEEN);
+constexpr field_state_t FWK = field_set_piece(FW, PIECE_KING);
 
-constexpr field_state_t FB = FIELD_SET_PLAYER(FF, PLAYER_BLACK);
-constexpr field_state_t FBP = FIELD_SET_PIECE(FB, PIECE_PAWN);
-constexpr field_state_t FBN = FIELD_SET_PIECE(FB, PIECE_KNIGHT);
-constexpr field_state_t FBB = FIELD_SET_PIECE(FB, PIECE_BISHOP);
-constexpr field_state_t FBR = FIELD_SET_PIECE(FB, PIECE_ROOK);
-constexpr field_state_t FBQ = FIELD_SET_PIECE(FB, PIECE_QUEEN);
-constexpr field_state_t FBK = FIELD_SET_PIECE(FB, PIECE_KING);
+constexpr field_state_t FBP = field_set_piece(FB, PIECE_PAWN);
+constexpr field_state_t FBN = field_set_piece(FB, PIECE_KNIGHT);
+constexpr field_state_t FBB = field_set_piece(FB, PIECE_BISHOP);
+constexpr field_state_t FBR = field_set_piece(FB, PIECE_ROOK);
+constexpr field_state_t FBQ = field_set_piece(FB, PIECE_QUEEN);
+constexpr field_state_t FBK = field_set_piece(FB, PIECE_KING);
 
 using board_state_t = std::array<field_state_t, 64>;
 
@@ -240,6 +301,8 @@ enum field_t
 template <typename T>
 constexpr void BOARD_STATE_META_SET_BITS(
     board_state_t& board, const T value, const std::size_t start_pos, const std::size_t end_pos) {
+    constexpr auto FIELD_META_BITS_WIDTH = 0b11;
+    constexpr auto FIELD_META_BITS_SIZE = FIELD_META_BITS_DESC.bit_width;
     const std::size_t start_field_idx = start_pos / FIELD_META_BITS_SIZE;
     const std::size_t end_field_idx = end_pos / FIELD_META_BITS_SIZE;
 
@@ -249,7 +312,7 @@ constexpr void BOARD_STATE_META_SET_BITS(
          ++field_idx, ++field_shift_idx) {
         std::size_t shift = field_shift_idx * FIELD_META_BITS_SIZE;
         field_meta_bits_t meta_bits = GET_VALUE(value, shift, FIELD_META_BITS_WIDTH);
-        board[field_idx] = FIELD_SET_META_BITS(board[field_idx], meta_bits);
+        board[field_idx] = field_set_meta_bits(board[field_idx], meta_bits);
     }
 }
 
@@ -257,6 +320,8 @@ template <typename T>
 constexpr T BOARD_STATE_META_GET_BITS(
     const board_state_t& board, const std::size_t start_pos, const std::size_t end_pos) {
     T result = {};
+    constexpr auto FIELD_META_BITS_WIDTH = 0b11;
+    constexpr auto FIELD_META_BITS_SIZE = FIELD_META_BITS_DESC.bit_width;
     const std::size_t start_field_idx = start_pos / FIELD_META_BITS_SIZE;
     const std::size_t end_field_idx = end_pos / FIELD_META_BITS_SIZE;
 
@@ -264,7 +329,7 @@ constexpr T BOARD_STATE_META_GET_BITS(
     for (std::size_t field_idx = start_field_idx;
          field_idx < end_field_idx;
          ++field_idx, ++field_shift_idx) {
-        field_meta_bits_t meta_bits = FIELD_GET_META_BITS(board[field_idx]);
+        field_meta_bits_t meta_bits = field_get_meta_bits(board[field_idx]);
         std::size_t shift = field_shift_idx * FIELD_META_BITS_SIZE;
         result = SET_VALUE(result, meta_bits, shift, FIELD_META_BITS_WIDTH << shift);
     }
@@ -470,10 +535,10 @@ bool check_last_move(const board_state_t& board, const move_s& move) {
 
 bool is_king_under_attack(const board_state_t& board, const player_t player) {
     for (const auto field : board) {
-        if (PIECE_KING == FIELD_GET_PIECE(field) and player == FIELD_GET_PLAYER(field)) {
+        if (PIECE_KING == field_get_piece(field) and player == field_get_player(field)) {
             return PLAYER_WHITE == player
-                ? FIELD_UNDER_BLACK_ATTACK(field)
-                : FIELD_UNDER_WHITE_ATTACK(field);
+                ? field_under_black_attack(field)
+                : field_under_white_attack(field);
         }
     }
     return false;
@@ -481,17 +546,17 @@ bool is_king_under_attack(const board_state_t& board, const player_t player) {
 
 void clear_fields_under_attack(board_state_t& board) {
     for (auto& field : board) {
-        field = FIELD_CLEAR_UNDER_WHITE_ATTACK(field);
-        field = FIELD_CLEAR_UNDER_BLACK_ATTACK(field);
+        field = field_clear_under_white_attack(field);
+        field = field_clear_under_black_attack(field);
     }
 }
 
 void update_field_under_attack(board_state_t& board, const field_t field, const player_t player) {
     if (FIELD_INVALID != field) {
         if (PLAYER_WHITE == player) {
-            board[field] = FIELD_SET_UNDER_WHITE_ATTACK(board[field]);
+            board[field] = field_set_under_white_attack(board[field]);
         } else {
-            board[field] = FIELD_SET_UNDER_BLACK_ATTACK(board[field]);
+            board[field] = field_set_under_black_attack(board[field]);
         }
     }
 }
@@ -526,11 +591,11 @@ void update_ranged_fields_under_attack_op(
     do {
         target_field = operation(target_field);
         if (FIELD_INVALID == target_field) break;
-        if (PIECE_EMPTY == FIELD_GET_PIECE(board[target_field])) {
+        if (PIECE_EMPTY == field_get_piece(board[target_field])) {
             update_field_under_attack(board, target_field, player);
             continue;
         }
-        if (player != FIELD_GET_PLAYER(board[target_field])) {
+        if (player != field_get_player(board[target_field])) {
             update_field_under_attack(board, target_field, player);
             break;
         }
@@ -572,8 +637,8 @@ void update_fields_under_attack(board_state_t& board) {
          field_idx < static_cast<uint8_t>(FIELD_STOP);
          ++field_idx) {
         field_t field = static_cast<field_t>(field_idx);
-        piece_t piece = FIELD_GET_PIECE(board[field]);
-        player_t player = FIELD_GET_PLAYER(board[field]);
+        piece_t piece = field_get_piece(board[field]);
+        player_t player = field_get_player(board[field]);
         switch (piece) {
             case PIECE_PAWN: update_pawn_fields_under_attack(board, field, player); break;
             case PIECE_KNIGHT: update_knight_fields_under_attack(board, field, player); break;
@@ -631,8 +696,8 @@ void update_castling_rights(board_state_t& board, const move_s& move) {
 
 board_state_t* apply_move_if_valid(board_state_t* moves, const move_s& move) {
     auto& board = *moves;
-    board[move.from] = FIELD_SET_PIECE(board[move.from], PIECE_EMPTY);
-    board[move.to] = FIELD_SET_PIECE(FIELD_SET_PLAYER(board[move.to], move.player), move.piece);
+    board[move.from] = field_set_piece(board[move.from], PIECE_EMPTY);
+    board[move.to] = field_set_piece(field_set_player(board[move.to], move.player), move.piece);
 
     update_fields_under_attack(board);
     if (is_king_under_attack(board, move.player))
@@ -646,29 +711,29 @@ board_state_t* apply_move_if_valid(board_state_t* moves, const move_s& move) {
 board_state_t* add_white_pawn_move_up(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     field_t target_field = field_up(field);
-    if (FIELD_INVALID == target_field or PIECE_EMPTY != FIELD_GET_PIECE(board[target_field]))
+    if (FIELD_INVALID == target_field or PIECE_EMPTY != field_get_piece(board[target_field]))
         return moves;
 
     if (rank_t::_8 == field_rank(target_field)) {
         auto& move1 = *moves;
         move1 = board;
         moves = apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
-        move1[target_field] = FIELD_SET_PIECE(move1[target_field], PIECE_KNIGHT);
+        move1[target_field] = field_set_piece(move1[target_field], PIECE_KNIGHT);
 
         auto& move2 = *moves;
         move2 = board;
         moves = apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
-        move2[target_field] = FIELD_SET_PIECE(move2[target_field], PIECE_BISHOP);
+        move2[target_field] = field_set_piece(move2[target_field], PIECE_BISHOP);
 
         auto& move3 = *moves;
         move3 = board;
         moves = apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
-        move3[target_field] = FIELD_SET_PIECE(move3[target_field], PIECE_ROOK);
+        move3[target_field] = field_set_piece(move3[target_field], PIECE_ROOK);
 
         auto& move4 = *moves;
         move4 = board;
         moves = apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
-        move4[target_field] = FIELD_SET_PIECE(move4[target_field], PIECE_QUEEN);
+        move4[target_field] = field_set_piece(move4[target_field], PIECE_QUEEN);
         return moves;
     } else {
         *moves = board;
@@ -680,10 +745,10 @@ board_state_t* add_white_pawn_move_up_long(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     if (rank_t::_2 != field_rank(field)) return moves;
     field_t target_field = field_up(field);
-    if (FIELD_INVALID == target_field or PIECE_EMPTY != FIELD_GET_PIECE(board[target_field]))
+    if (FIELD_INVALID == target_field or PIECE_EMPTY != field_get_piece(board[target_field]))
         return moves;
     target_field = field_up(target_field);
-    if (FIELD_INVALID == target_field or PIECE_EMPTY != FIELD_GET_PIECE(board[target_field]))
+    if (FIELD_INVALID == target_field or PIECE_EMPTY != field_get_piece(board[target_field]))
         return moves;
 
     *moves = board;
@@ -694,8 +759,8 @@ board_state_t* add_white_pawn_capture_left_up(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     field_t target_field = field_left_up(field);
     if (FIELD_INVALID == target_field or
-        PIECE_EMPTY == FIELD_GET_PIECE(board[target_field]) or
-        PLAYER_BLACK != FIELD_GET_PLAYER(board[target_field]))
+        PIECE_EMPTY == field_get_piece(board[target_field]) or
+        PLAYER_BLACK != field_get_player(board[target_field]))
         return moves;
 
     *moves = board;
@@ -706,8 +771,8 @@ board_state_t* add_white_pawn_capture_right_up(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     field_t target_field = field_right_up(field);
     if (FIELD_INVALID == target_field or
-        PIECE_EMPTY == FIELD_GET_PIECE(board[target_field]) or
-        PLAYER_BLACK != FIELD_GET_PLAYER(board[target_field]))
+        PIECE_EMPTY == field_get_piece(board[target_field]) or
+        PLAYER_BLACK != field_get_player(board[target_field]))
         return moves;
 
     *moves = board;
@@ -725,7 +790,7 @@ board_state_t* add_white_pawn_capture_enpassant_left(
         return moves;
 
     *moves = board;
-    (*moves)[opps_move_to] = FIELD_SET_PIECE((*moves)[opps_move_to], PIECE_EMPTY);
+    (*moves)[opps_move_to] = field_set_piece((*moves)[opps_move_to], PIECE_EMPTY);
     return apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
 }
 
@@ -740,7 +805,7 @@ board_state_t* add_white_pawn_capture_enpassant_right(
         return moves;
 
     *moves = board;
-    (*moves)[opps_move_to] = FIELD_SET_PIECE((*moves)[opps_move_to], PIECE_EMPTY);
+    (*moves)[opps_move_to] = field_set_piece((*moves)[opps_move_to], PIECE_EMPTY);
     return apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
 }
 
@@ -758,29 +823,29 @@ board_state_t* fill_white_pawn_candidate_moves(
 board_state_t* add_black_pawn_move_down(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     field_t target_field = field_down(field);
-    if (FIELD_INVALID == target_field or PIECE_EMPTY != FIELD_GET_PIECE(board[target_field]))
+    if (FIELD_INVALID == target_field or PIECE_EMPTY != field_get_piece(board[target_field]))
         return moves;
 
     if (rank_t::_1 == field_rank(target_field)) {
         auto& move1 = *moves;
         move1 = board;
         moves = apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
-        move1[target_field] = FIELD_SET_PIECE(move1[target_field], PIECE_KNIGHT);
+        move1[target_field] = field_set_piece(move1[target_field], PIECE_KNIGHT);
 
         auto& move2 = *moves;
         move2 = board;
         moves = apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
-        move2[target_field] = FIELD_SET_PIECE(move2[target_field], PIECE_BISHOP);
+        move2[target_field] = field_set_piece(move2[target_field], PIECE_BISHOP);
 
         auto& move3 = *moves;
         move3 = board;
         moves = apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
-        move3[target_field] = FIELD_SET_PIECE(move3[target_field], PIECE_ROOK);
+        move3[target_field] = field_set_piece(move3[target_field], PIECE_ROOK);
 
         auto& move4 = *moves;
         move4 = board;
         moves = apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
-        move4[target_field] = FIELD_SET_PIECE(move4[target_field], PIECE_QUEEN);
+        move4[target_field] = field_set_piece(move4[target_field], PIECE_QUEEN);
         return moves + 4;
     } else {
         *moves = board;
@@ -793,10 +858,10 @@ board_state_t* add_black_pawn_move_down_long(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     if (rank_t::_7 != field_rank(field)) return moves;
     field_t target_field = field_down(field);
-    if (FIELD_INVALID == target_field or PIECE_EMPTY != FIELD_GET_PIECE(board[target_field]))
+    if (FIELD_INVALID == target_field or PIECE_EMPTY != field_get_piece(board[target_field]))
         return moves;
     target_field = field_down(target_field);
-    if (FIELD_INVALID == target_field or PIECE_EMPTY != FIELD_GET_PIECE(board[target_field]))
+    if (FIELD_INVALID == target_field or PIECE_EMPTY != field_get_piece(board[target_field]))
         return moves;
 
     *moves = board;
@@ -807,8 +872,8 @@ board_state_t* add_black_pawn_capture_left_down(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     field_t target_field = field_left_down(field);
     if (FIELD_INVALID == target_field or
-        PIECE_EMPTY == FIELD_GET_PIECE(board[target_field]) or
-        PLAYER_WHITE != FIELD_GET_PLAYER(board[target_field]))
+        PIECE_EMPTY == field_get_piece(board[target_field]) or
+        PLAYER_WHITE != field_get_player(board[target_field]))
         return moves;
 
     *moves = board;
@@ -819,8 +884,8 @@ board_state_t* add_black_pawn_capture_right_down(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     field_t target_field = field_right_down(field);
     if (FIELD_INVALID == target_field or
-        PIECE_EMPTY == FIELD_GET_PIECE(board[target_field]) or
-        PLAYER_WHITE != FIELD_GET_PLAYER(board[target_field]))
+        PIECE_EMPTY == field_get_piece(board[target_field]) or
+        PLAYER_WHITE != field_get_player(board[target_field]))
         return moves;
 
     *moves = board;
@@ -838,7 +903,7 @@ board_state_t* add_black_pawn_capture_enpassant_left(
         return moves;
 
     *moves = board;
-    (*moves)[opps_move_to] = FIELD_SET_PIECE((*moves)[opps_move_to], PIECE_EMPTY);
+    (*moves)[opps_move_to] = field_set_piece((*moves)[opps_move_to], PIECE_EMPTY);
     return apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
 }
 
@@ -853,7 +918,7 @@ board_state_t* add_black_pawn_capture_enpassant_right(
         return moves;
 
     *moves = board;
-    (*moves)[opps_move_to] = FIELD_SET_PIECE((*moves)[opps_move_to], PIECE_EMPTY);
+    (*moves)[opps_move_to] = field_set_piece((*moves)[opps_move_to], PIECE_EMPTY);
     return apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
 }
 
@@ -879,11 +944,11 @@ board_state_t* fill_regular_candidate_move(
     board_state_t* moves, const board_state_t& board, const player_t player, const piece_t piece,
     const field_t field, const field_t target_field) {
     if (FIELD_INVALID == target_field or
-        (PIECE_EMPTY != FIELD_GET_PIECE(board[target_field]) and 
-         player == FIELD_GET_PLAYER(board[target_field])) or
+        (PIECE_EMPTY != field_get_piece(board[target_field]) and 
+         player == field_get_player(board[target_field])) or
         (PIECE_KING == piece and (
-            (PLAYER_WHITE == player and FIELD_UNDER_BLACK_ATTACK(board[target_field])) or
-            (PLAYER_BLACK == player and FIELD_UNDER_WHITE_ATTACK(board[target_field])))))
+            (PLAYER_WHITE == player and field_under_black_attack(board[target_field])) or
+            (PLAYER_BLACK == player and field_under_white_attack(board[target_field])))))
         return moves;
 
     *moves = board;
@@ -919,12 +984,12 @@ board_state_t* fill_ranged_candidate_moves_op(
     do {
         target_field = operation(target_field);
         if (FIELD_INVALID == target_field) break;
-        if (PIECE_EMPTY == FIELD_GET_PIECE(board[target_field])) {
+        if (PIECE_EMPTY == field_get_piece(board[target_field])) {
             *moves = board;
             moves = apply_move_if_valid(moves, { player, piece, field, target_field });
             continue;
         }
-        if (player != FIELD_GET_PLAYER(board[target_field])) {
+        if (player != field_get_player(board[target_field])) {
             *moves = board;
             moves = apply_move_if_valid(moves, { player, piece, field, target_field });
             break;
@@ -958,19 +1023,19 @@ board_state_t* fill_white_short_castle(
     board_state_t* moves, const board_state_t& board, const field_t field)
 {
     if (E1 != field or
-        PLAYER_WHITE != FIELD_GET_PLAYER(board[H1]) or
-        PIECE_ROOK != FIELD_GET_PIECE(board[H1]) or
-        PIECE_EMPTY != FIELD_GET_PIECE(board[F1]) or
-        PIECE_EMPTY != FIELD_GET_PIECE(board[G1]) or
+        PLAYER_WHITE != field_get_player(board[H1]) or
+        PIECE_ROOK != field_get_piece(board[H1]) or
+        PIECE_EMPTY != field_get_piece(board[F1]) or
+        PIECE_EMPTY != field_get_piece(board[G1]) or
         !CASTLING_RIGHTS_WHITE_SHORT(BOARD_STATE_META_GET_CASTLING_RIGHTS(board)) or
-        FIELD_UNDER_BLACK_ATTACK(board[E1]) or
-        FIELD_UNDER_BLACK_ATTACK(board[F1]) or
-        FIELD_UNDER_BLACK_ATTACK(board[G1]))
+        field_under_black_attack(board[E1]) or
+        field_under_black_attack(board[F1]) or
+        field_under_black_attack(board[G1]))
         return moves;
 
     auto& move = *moves = board;
-    move[H1] = FIELD_SET_PIECE(move[H1], PIECE_EMPTY);
-    move[F1] = FIELD_SET_PIECE(FIELD_SET_PLAYER(move[F1], PLAYER_WHITE), PIECE_ROOK);
+    move[H1] = field_set_piece(move[H1], PIECE_EMPTY);
+    move[F1] = field_set_piece(field_set_player(move[F1], PLAYER_WHITE), PIECE_ROOK);
     return apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_KING, E1, G1 });
 }
 
@@ -978,19 +1043,19 @@ board_state_t* fill_black_short_castle(
     board_state_t* moves, const board_state_t& board, const field_t field)
 {
     if (E8 != field or
-        PLAYER_BLACK != FIELD_GET_PLAYER(board[H8]) or
-        PIECE_ROOK != FIELD_GET_PIECE(board[H8]) or
-        PIECE_EMPTY != FIELD_GET_PIECE(board[F8]) or
-        PIECE_EMPTY != FIELD_GET_PIECE(board[G8]) or
+        PLAYER_BLACK != field_get_player(board[H8]) or
+        PIECE_ROOK != field_get_piece(board[H8]) or
+        PIECE_EMPTY != field_get_piece(board[F8]) or
+        PIECE_EMPTY != field_get_piece(board[G8]) or
         !CASTLING_RIGHTS_BLACK_SHORT(BOARD_STATE_META_GET_CASTLING_RIGHTS(board)) or
-        FIELD_UNDER_WHITE_ATTACK(board[E8]) or
-        FIELD_UNDER_WHITE_ATTACK(board[F8]) or
-        FIELD_UNDER_WHITE_ATTACK(board[G8]))
+        field_under_white_attack(board[E8]) or
+        field_under_white_attack(board[F8]) or
+        field_under_white_attack(board[G8]))
         return moves;
 
     auto& move = *moves = board;
-    move[H8] = FIELD_SET_PIECE(move[H8], PIECE_EMPTY);
-    move[F8] = FIELD_SET_PIECE(FIELD_SET_PLAYER(move[F8], PLAYER_BLACK), PIECE_ROOK);
+    move[H8] = field_set_piece(move[H8], PIECE_EMPTY);
+    move[F8] = field_set_piece(field_set_player(move[F8], PLAYER_BLACK), PIECE_ROOK);
     return apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_KING, E8, G8 });
 }
 
@@ -1006,20 +1071,20 @@ board_state_t* fill_white_long_castle(
     board_state_t* moves, const board_state_t& board, const field_t field)
 {
     if (E1 != field or
-        PLAYER_WHITE != FIELD_GET_PLAYER(board[A1]) or
-        PIECE_ROOK != FIELD_GET_PIECE(board[A1]) or
-        PIECE_EMPTY != FIELD_GET_PIECE(board[B1]) or
-        PIECE_EMPTY != FIELD_GET_PIECE(board[C1]) or
-        PIECE_EMPTY != FIELD_GET_PIECE(board[D1]) or
+        PLAYER_WHITE != field_get_player(board[A1]) or
+        PIECE_ROOK != field_get_piece(board[A1]) or
+        PIECE_EMPTY != field_get_piece(board[B1]) or
+        PIECE_EMPTY != field_get_piece(board[C1]) or
+        PIECE_EMPTY != field_get_piece(board[D1]) or
         !CASTLING_RIGHTS_WHITE_LONG(BOARD_STATE_META_GET_CASTLING_RIGHTS(board)) or
-        FIELD_UNDER_BLACK_ATTACK(board[C1]) or
-        FIELD_UNDER_BLACK_ATTACK(board[D1]) or
-        FIELD_UNDER_BLACK_ATTACK(board[E1]))
+        field_under_black_attack(board[C1]) or
+        field_under_black_attack(board[D1]) or
+        field_under_black_attack(board[E1]))
         return moves;
 
     auto& move = *moves = board;
-    move[A1] = FIELD_SET_PIECE(move[A1], PIECE_EMPTY);
-    move[D1] = FIELD_SET_PIECE(FIELD_SET_PLAYER(move[D1], PLAYER_WHITE), PIECE_ROOK);
+    move[A1] = field_set_piece(move[A1], PIECE_EMPTY);
+    move[D1] = field_set_piece(field_set_player(move[D1], PLAYER_WHITE), PIECE_ROOK);
     return apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_KING, E1, C1 });
 }
 
@@ -1027,17 +1092,17 @@ board_state_t* fill_black_long_castle(
     board_state_t* moves, const board_state_t& board, const field_t field)
 {
     if (E8 != field or
-        PLAYER_BLACK != FIELD_GET_PLAYER(board[A8]) or
-        PIECE_ROOK != FIELD_GET_PIECE(board[A8]) or
-        PIECE_EMPTY != FIELD_GET_PIECE(board[B8]) or
-        PIECE_EMPTY != FIELD_GET_PIECE(board[C8]) or
-        PIECE_EMPTY != FIELD_GET_PIECE(board[D8]) or
+        PLAYER_BLACK != field_get_player(board[A8]) or
+        PIECE_ROOK != field_get_piece(board[A8]) or
+        PIECE_EMPTY != field_get_piece(board[B8]) or
+        PIECE_EMPTY != field_get_piece(board[C8]) or
+        PIECE_EMPTY != field_get_piece(board[D8]) or
         !CASTLING_RIGHTS_BLACK_LONG(BOARD_STATE_META_GET_CASTLING_RIGHTS(board)))
         return moves;
 
     auto& move = *moves = board;
-    move[A8] = FIELD_SET_PIECE(move[A8], PIECE_EMPTY);
-    move[D8] = FIELD_SET_PIECE(FIELD_SET_PLAYER(move[D8], PLAYER_BLACK), PIECE_ROOK);
+    move[A8] = field_set_piece(move[A8], PIECE_EMPTY);
+    move[D8] = field_set_piece(field_set_player(move[D8], PLAYER_BLACK), PIECE_ROOK);
     return apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_KING, E8, C8 });
 }
 
@@ -1078,10 +1143,10 @@ board_state_t* fill_candidate_moves(
     for (uint8_t field_idx = static_cast<uint8_t>(FIELD_START);
          field_idx < static_cast<uint8_t>(FIELD_STOP);
          ++field_idx) {
-        if (player != FIELD_GET_PLAYER(board[field_idx])) continue;
+        if (player != field_get_player(board[field_idx])) continue;
 
         field_t field = static_cast<field_t>(field_idx);
-        piece_t piece = FIELD_GET_PIECE(board[field_idx]);
+        piece_t piece = field_get_piece(board[field_idx]);
         if (PIECE_PAWN == piece) {
             moves = fill_pawn_candidate_moves(moves, board, player, field);
             continue;
@@ -1119,9 +1184,9 @@ bool validate_board_state(const board_state_t& board) {
     field_t last_move_to = LAST_MOVE_GET_TO(last_move);
 
     if (last_move_piece != PIECE_EMPTY and
-        last_move_player != FIELD_GET_PLAYER(board[last_move_to]) and
-        last_move_piece != FIELD_GET_PIECE(board[last_move_to]) and
-        PIECE_EMPTY != FIELD_GET_PIECE(board[last_move_from]))
+        last_move_player != field_get_player(board[last_move_to]) and
+        last_move_piece != field_get_piece(board[last_move_to]) and
+        PIECE_EMPTY != field_get_piece(board[last_move_from]))
     {
         return false;
     }
@@ -1134,11 +1199,11 @@ bool check_draw_by_insufficient_material(const board_state_t& board) {
     bool black_bishop_found = false;
     bool black_knight_found = false;
     for (const auto field : board) {
-        switch (FIELD_GET_PIECE(field)) {
+        switch (field_get_piece(field)) {
             case PIECE_EMPTY:
             case PIECE_KING: break;
             case PIECE_BISHOP: {
-                if (PLAYER_WHITE == FIELD_GET_PLAYER(field)) {
+                if (PLAYER_WHITE == field_get_player(field)) {
                     if (white_bishop_found or white_knight_found) {
                         return false;
                     } else {
@@ -1154,7 +1219,7 @@ bool check_draw_by_insufficient_material(const board_state_t& board) {
                 break;
             }
             case PIECE_KNIGHT: {
-                if (PLAYER_WHITE == FIELD_GET_PLAYER(field)) {
+                if (PLAYER_WHITE == field_get_player(field)) {
                     if (white_knight_found or white_bishop_found) {
                         return false;
                     } else {
@@ -1184,9 +1249,9 @@ bool compare_simple_position(const board_state_t& lhs, const board_state_t& rhs)
          ++field_idx) {
         auto left_field = lhs[field_idx];
         auto right_field = rhs[field_idx];
-        if (FIELD_GET_PIECE(left_field) != FIELD_GET_PIECE(right_field) or
-            (PIECE_EMPTY != FIELD_GET_PIECE(left_field) and
-            FIELD_GET_PLAYER(left_field) != FIELD_GET_PLAYER(right_field))) {
+        if (field_get_piece(left_field) != field_get_piece(right_field) or
+            (PIECE_EMPTY != field_get_piece(left_field) and
+            field_get_player(left_field) != field_get_player(right_field))) {
             return false;
         }
     }
@@ -1211,8 +1276,8 @@ void update_insignificant_move_cnt(std::size_t& insignificant_move_cnt,
     } else {
         player_t player = LAST_MOVE_GET_PLAYER(last_move);
         field_t target_field = LAST_MOVE_GET_TO(last_move);
-        if (PIECE_EMPTY != FIELD_GET_PIECE(previous_position[target_field]) and
-            player != FIELD_GET_PLAYER(previous_position[target_field])) {
+        if (PIECE_EMPTY != field_get_piece(previous_position[target_field]) and
+            player != field_get_player(previous_position[target_field])) {
             insignificant_move_cnt = 0;
         }
     }

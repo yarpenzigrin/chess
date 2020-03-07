@@ -53,8 +53,8 @@ score_t score_position(const board_state_t& board) {
 
     score_t total_score = 0;
     for (const auto field : board) {
-        score_t sign = (PLAYER_WHITE == FIELD_GET_PLAYER(field) ? 1 : -1 );
-        switch (FIELD_GET_PIECE(field)) {
+        score_t sign = (PLAYER_WHITE == field_get_player(field) ? 1 : -1 );
+        switch (field_get_piece(field)) {
             case PIECE_PAWN: total_score += PAWN_SCORE * sign; break;
             case PIECE_KNIGHT: total_score += KNIGHT_SCORE * sign; break;
             case PIECE_BISHOP: total_score += BISHOP_SCORE * sign; break;

@@ -353,7 +353,7 @@ TEST(CandidateMoves_Pawn_White_CaptureEnPassantLeft) {
     auto found_move = find_candidate_move(
         c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, E5, D6 });
     ASSERT(c_moves_end != found_move);
-    ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[D5]));
+    ASSERT(PIECE_EMPTY == field_get_piece((*found_move)[D5]));
 }
 
 TEST(CandidateMoves_Pawn_White_CaptureEnPassantRight) {
@@ -367,7 +367,7 @@ TEST(CandidateMoves_Pawn_White_CaptureEnPassantRight) {
     auto found_move = find_candidate_move(
         c_moves.get(), c_moves_end, { PLAYER_WHITE, PIECE_PAWN, E5, F6 });
     ASSERT(c_moves_end != found_move);
-    ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[F5])); 
+    ASSERT(PIECE_EMPTY == field_get_piece((*found_move)[F5])); 
 }
 
 TEST(CandidateMoves_Pawn_Black_CaptureEnPassantLeft) {
@@ -381,7 +381,7 @@ TEST(CandidateMoves_Pawn_Black_CaptureEnPassantLeft) {
     auto found_move = find_candidate_move(
         c_moves.get(), c_moves_end, { PLAYER_BLACK, PIECE_PAWN, F4, E3 });
     ASSERT(c_moves_end != found_move);
-    ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[E4]));
+    ASSERT(PIECE_EMPTY == field_get_piece((*found_move)[E4]));
 }
 
 TEST(CandidateMoves_Pawn_Black_CaptureEnPassantRight) {
@@ -395,7 +395,7 @@ TEST(CandidateMoves_Pawn_Black_CaptureEnPassantRight) {
     auto found_move = find_candidate_move(
         c_moves.get(), c_moves_end, { PLAYER_BLACK, PIECE_PAWN, D4, E3 });
     ASSERT(c_moves_end != found_move);
-    ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[E4]));
+    ASSERT(PIECE_EMPTY == field_get_piece((*found_move)[E4]));
 }
 
 TEST(CandidateMoves_Pawn_White_MoveForward_Queening) {
@@ -408,7 +408,7 @@ TEST(CandidateMoves_Pawn_White_MoveForward_Queening) {
         auto found_move = find_candidate_move(
             c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_PAWN, A7, A8 });
         if (c_moves_end != found_move) {
-            transformed_pieces.push_back(FIELD_GET_PIECE((*found_move)[A8]));
+            transformed_pieces.push_back(field_get_piece((*found_move)[A8]));
             c_moves_beg = found_move + 1;
         } else {
             c_moves_beg = found_move;
@@ -436,7 +436,7 @@ TEST(CandidateMoves_Pawn_Black_MoveForward_Queening) {
         auto found_move = find_candidate_move(
             c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_PAWN, A2, A1 });
         if (c_moves_end != found_move) {
-            transformed_pieces.push_back(FIELD_GET_PIECE((*found_move)[A1]));
+            transformed_pieces.push_back(field_get_piece((*found_move)[A1]));
             c_moves_beg = found_move + 1;
         } else {
             c_moves_beg = found_move;
@@ -770,9 +770,9 @@ TEST(CandidateMoves_King_White_ValidShortCastle) {
     auto found_move = find_candidate_move(
         c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E1, G1 });
     ASSERT(c_moves_end != found_move);
-    ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[H1])); 
-    ASSERT(PLAYER_WHITE == FIELD_GET_PLAYER((*found_move)[F1])); 
-    ASSERT(PIECE_ROOK == FIELD_GET_PIECE((*found_move)[F1])); 
+    ASSERT(PIECE_EMPTY == field_get_piece((*found_move)[H1])); 
+    ASSERT(PLAYER_WHITE == field_get_player((*found_move)[F1])); 
+    ASSERT(PIECE_ROOK == field_get_piece((*found_move)[F1])); 
 }
 
 TEST(CandidateMoves_King_Black_ValidShortCastle) {
@@ -789,9 +789,9 @@ TEST(CandidateMoves_King_Black_ValidShortCastle) {
     auto found_move = find_candidate_move(
         c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E8, G8 });
     ASSERT(c_moves_end != found_move);
-    ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[H8])); 
-    ASSERT(PLAYER_BLACK == FIELD_GET_PLAYER((*found_move)[F8])); 
-    ASSERT(PIECE_ROOK == FIELD_GET_PIECE((*found_move)[F8])); 
+    ASSERT(PIECE_EMPTY == field_get_piece((*found_move)[H8])); 
+    ASSERT(PLAYER_BLACK == field_get_player((*found_move)[F8])); 
+    ASSERT(PIECE_ROOK == field_get_piece((*found_move)[F8])); 
 }
 
 TEST(CandidateMoves_King_White_ValidLongCastle) {
@@ -808,9 +808,9 @@ TEST(CandidateMoves_King_White_ValidLongCastle) {
     auto found_move = find_candidate_move(
         c_moves_beg, c_moves_end, { PLAYER_WHITE, PIECE_KING, E1, C1 });
     ASSERT(c_moves_end != found_move);
-    ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[A1])); 
-    ASSERT(PLAYER_WHITE == FIELD_GET_PLAYER((*found_move)[D1])); 
-    ASSERT(PIECE_ROOK == FIELD_GET_PIECE((*found_move)[D1])); 
+    ASSERT(PIECE_EMPTY == field_get_piece((*found_move)[A1])); 
+    ASSERT(PLAYER_WHITE == field_get_player((*found_move)[D1])); 
+    ASSERT(PIECE_ROOK == field_get_piece((*found_move)[D1])); 
 }
 
 TEST(CandidateMoves_King_Black_ValidLongCastle) {
@@ -827,9 +827,9 @@ TEST(CandidateMoves_King_Black_ValidLongCastle) {
     auto found_move = find_candidate_move(
         c_moves_beg, c_moves_end, { PLAYER_BLACK, PIECE_KING, E8, C8 });
     ASSERT(c_moves_end != found_move);
-    ASSERT(PIECE_EMPTY == FIELD_GET_PIECE((*found_move)[A8])); 
-    ASSERT(PLAYER_BLACK == FIELD_GET_PLAYER((*found_move)[D8])); 
-    ASSERT(PIECE_ROOK == FIELD_GET_PIECE((*found_move)[D8])); 
+    ASSERT(PIECE_EMPTY == field_get_piece((*found_move)[A8])); 
+    ASSERT(PLAYER_BLACK == field_get_player((*found_move)[D8])); 
+    ASSERT(PIECE_ROOK == field_get_piece((*found_move)[D8])); 
 }
 
 TEST(CandidateMoves_King_White_CastlingRightsLostByKing) {

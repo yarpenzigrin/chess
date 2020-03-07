@@ -34,8 +34,8 @@ const char* COLOR_STOP = "\e[m";
 
 template <typename T>
 void print_field(T& stream, const field_state_t field) {
-    player_t player = FIELD_GET_PLAYER(field);
-    piece_t piece = FIELD_GET_PIECE(field);
+    player_t player = field_get_player(field);
+    piece_t piece = field_get_piece(field);
     bool occupied = piece != PIECE_EMPTY;
 
     const char* color = !occupied ? COLOR_NO_PLAYER :
