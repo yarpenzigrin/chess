@@ -106,7 +106,7 @@ constexpr player_t PLAYER_WHITE =    1;
 constexpr player_t PLAYER_BLACK =    0;
 
 constexpr player_t PLAYER_OPP(const player_t player) {
-    return PLAYER_WHITE == player ? PLAYER_BLACK : PLAYER_WHITE;
+    return ~player & 0b1;
 }
 
 using piece_t = uint8_t;
