@@ -29,16 +29,16 @@ std::unique_ptr<board_state_t[]> prepare_moves() {
 }
 
 TEST(Internal_StaticEvaluation_FieldProperties) {
-    static_assert(file_t::file_t_max == field_file(FIELD_INVALID),
+    static_assert(file_t::MAX == field_file(field_t::INVALID),
         "Unknown file for invalid field");
-    static_assert(rank_t::rank_t_max == field_rank(FIELD_INVALID),
+    static_assert(rank_t::MAX == field_rank(field_t::INVALID),
         "Unknown rank for invalid field");
     static_assert(file_t::A == field_file(A4), "A-file for field A4");
     static_assert(file_t::H == field_file(H8), "H-file for field H8");
     static_assert(rank_t::_4 == field_rank(A4), "4th-rank for field A4");
     static_assert(rank_t::_8 == field_rank(H8), "8th-rank for field H8");
-    static_assert(FIELD_INVALID == make_field(150, 0), "(150,0) results in invalid field");
-    static_assert(FIELD_INVALID == make_field(3, 69), "(3,69) results in invalid field");
+    static_assert(field_t::INVALID == make_field(150, 0), "(150,0) results in invalid field");
+    static_assert(field_t::INVALID == make_field(3, 69), "(3,69) results in invalid field");
     static_assert(A4 == make_field(0, 3), "(0,3) results in field A4");
     static_assert(H8 == make_field(7, 7), "(7,7) results in field H8");
 }
@@ -52,16 +52,16 @@ TEST(Internal_StaticEvaluation_FieldGeneration) {
     static_assert(E5 == field_right_up(D4), "D4 --RIGHT--UP--> E5");
     static_assert(C3 == field_left_down(D4), "D4 --LEFT--DOWN--> C3");
     static_assert(E3 == field_right_down(D4), "D4 --RIGHT--DOWN--> E3");
-    static_assert(FIELD_INVALID == field_up(H8), "H8 --UP--> invalid field");
-    static_assert(FIELD_INVALID == field_right(H8), "H8 --RIGHT--> invalid field");
-    static_assert(FIELD_INVALID == field_left_up(H8), "H8 --LEFT--UP--> invalid field");
-    static_assert(FIELD_INVALID == field_right_up(H8), "H8 --RIGHT--UP--> invalid field");
-    static_assert(FIELD_INVALID == field_right_down(H8), "H8 --RIGHT--DOWN--> invalid field");
-    static_assert(FIELD_INVALID == field_down(A1), "A1 --DOWN--> invalid field");
-    static_assert(FIELD_INVALID == field_left(A1), "A1 --LEFT--> invalid field");
-    static_assert(FIELD_INVALID == field_left_up(A1), "A1 --LEFT--UP--> invalid field");
-    static_assert(FIELD_INVALID == field_left_down(A1), "A1 --LEFT--DOWN--> invalid field");
-    static_assert(FIELD_INVALID == field_right_down(A1), "A1 --RIGHT--DOWN--> invalid field");
+    static_assert(field_t::INVALID == field_up(H8), "H8 --UP--> invalid field");
+    static_assert(field_t::INVALID == field_right(H8), "H8 --RIGHT--> invalid field");
+    static_assert(field_t::INVALID == field_left_up(H8), "H8 --LEFT--UP--> invalid field");
+    static_assert(field_t::INVALID == field_right_up(H8), "H8 --RIGHT--UP--> invalid field");
+    static_assert(field_t::INVALID == field_right_down(H8), "H8 --RIGHT--DOWN--> invalid field");
+    static_assert(field_t::INVALID == field_down(A1), "A1 --DOWN--> invalid field");
+    static_assert(field_t::INVALID == field_left(A1), "A1 --LEFT--> invalid field");
+    static_assert(field_t::INVALID == field_left_up(A1), "A1 --LEFT--UP--> invalid field");
+    static_assert(field_t::INVALID == field_left_down(A1), "A1 --LEFT--DOWN--> invalid field");
+    static_assert(field_t::INVALID == field_right_down(A1), "A1 --RIGHT--DOWN--> invalid field");
 }
 
 TEST(Internal_Meta_CheckLastMove_WhitePawnE2E3) {

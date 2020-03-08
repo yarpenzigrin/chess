@@ -77,26 +77,26 @@ void print_board(T& stream, const board_state_t& board) {
         for (uint8_t i = 0; i < 8; ++i) {
             stream << ' ';
             print_field(stream, board[make_field(i, 7 - j)]);
-            stream << ' ';
+            stream << ' ' << ' ';
         }
         stream << '\n' << " \n";
     }
-    stream << "   A  B  C  D  E  F  G  H\n\n";
+    stream << "   A   B   C   D   E   F   G   H\n\n";
     auto castling = board_state_meta_get_castling_rights(board);
     stream << "Castling:\n"
         << " * " << colored("WHITE -> SHORT: ", PLAYER_WHITE, PIECE_INVALID)
         << colored(
-            castling_rights_white_short(castling) ? "YES" : "NO", PLAYER_WHITE, PIECE_INVALID)
+            castling_rights_white_short(castling) ? "YES" : "NO ", PLAYER_WHITE, PIECE_INVALID)
         << colored(" | LONG: ", PLAYER_WHITE, PIECE_INVALID)
         << colored(
-            castling_rights_white_long(castling) ? "YES" : "NO", PLAYER_WHITE, PIECE_INVALID)
+            castling_rights_white_long(castling) ? "YES" : "NO ", PLAYER_WHITE, PIECE_INVALID)
         << '\n'
         << " * " << colored("BLACK -> SHORT: ", PLAYER_BLACK, PIECE_INVALID)
         << colored(
-            castling_rights_black_short(castling) ? "YES" : "NO", PLAYER_BLACK, PIECE_INVALID)
+            castling_rights_black_short(castling) ? "YES" : "NO ", PLAYER_BLACK, PIECE_INVALID)
         << colored(" | LONG: ", PLAYER_BLACK, PIECE_INVALID)
         << colored(
-            castling_rights_black_long(castling) ? "YES" : "NO", PLAYER_BLACK, PIECE_INVALID)
+            castling_rights_black_long(castling) ? "YES" : "NO ", PLAYER_BLACK, PIECE_INVALID)
         << '\n';
 
     last_move_t last_move = board_state_meta_get_last_move(board);
@@ -107,7 +107,7 @@ void print_board(T& stream, const board_state_t& board) {
     stream << "Last move: ";
     if (PIECE_EMPTY == last_move_piece or PIECE_INVALID == last_move_piece)
     {
-        stream << "<none>\n";
+        stream << "<none>\n\n";
     }
     else
     {
@@ -115,7 +115,7 @@ void print_board(T& stream, const board_state_t& board) {
         auto rank_str = [&](auto f){ return RANK_TO_CHAR[static_cast<int>(field_rank(f))]; };
         stream << colored(PIECE_TO_CHAR[last_move_piece], last_move_player, last_move_piece)
             << ' ' << file_str(last_move_from) << rank_str(last_move_from)
-            << " -> " << file_str(last_move_to) << rank_str(last_move_to) << '\n';
+            << " -> " << file_str(last_move_to) << rank_str(last_move_to) << '\n' << '\n';
     }
 }
 

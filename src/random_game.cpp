@@ -90,19 +90,19 @@ evaluation_s evaluate_position_max_AB(
     auto score_f =
         [depth, player](const board_state_t& board, board_state_t* moves_beg, const score_t beta) {
         if (depth > 0) {
-            auto moves_end = fill_candidate_moves(moves_beg, board, PLAYER_OPP(player));
+            auto moves_end = fill_candidate_moves(moves_beg, board, opponent(player));
 
             if (moves_beg == moves_end) {
                 if (is_king_under_attack(board, player))
                     return -100;
-                else if (is_king_under_attack(board, PLAYER_OPP(player)))
+                else if (is_king_under_attack(board, opponent(player)))
                     return 100;
                 else
                     return 0;
             }
 
             return evaluate_position_min_AB(
-                moves_beg, moves_end, PLAYER_OPP(player), depth - 1, beta).score;
+                moves_beg, moves_end, opponent(player), depth - 1, beta).score;
         } else {
             return score_position(board);
         }
@@ -138,18 +138,18 @@ evaluation_s evaluate_position_min_AB(
     auto score_f =
         [depth, player](const board_state_t& board, board_state_t* moves_beg, const score_t alpha) {
         if (depth > 0) {
-            auto moves_end = fill_candidate_moves(moves_beg, board, PLAYER_OPP(player));
+            auto moves_end = fill_candidate_moves(moves_beg, board, opponent(player));
             if (moves_beg == moves_end) {
                 if (is_king_under_attack(board, player))
                     return 100;
-                else if (is_king_under_attack(board, PLAYER_OPP(player)))
+                else if (is_king_under_attack(board, opponent(player)))
                     return -100;
                 else
                     return 0;
             }
 
             return evaluate_position_max_AB(
-                moves_beg, moves_end, PLAYER_OPP(player), depth - 1, alpha).score;
+                moves_beg, moves_end, opponent(player), depth - 1, alpha).score;
         } else {
             return score_position(board);
         }
@@ -188,18 +188,18 @@ evaluation_s evaluate_position_max(
     const int depth) {
     auto score_f = [depth, player](const board_state_t& board, board_state_t* moves_beg) {
         if (depth > 0) {
-            auto moves_end = fill_candidate_moves(moves_beg, board, PLAYER_OPP(player));
+            auto moves_end = fill_candidate_moves(moves_beg, board, opponent(player));
 
             if (moves_beg == moves_end) {
                 if (is_king_under_attack(board, player))
                     return -100;
-                else if (is_king_under_attack(board, PLAYER_OPP(player)))
+                else if (is_king_under_attack(board, opponent(player)))
                     return 100;
                 else
                     return 0;
             }
 
-            return evaluate_position_min(moves_beg, moves_end, PLAYER_OPP(player), depth - 1).score;
+            return evaluate_position_min(moves_beg, moves_end, opponent(player), depth - 1).score;
         } else {
             return score_position(board);
         }
@@ -229,17 +229,17 @@ evaluation_s evaluate_position_min(
     const int depth) {
     auto score_f = [depth, player](const board_state_t& board, board_state_t* moves_beg) {
         if (depth > 0) {
-            auto moves_end = fill_candidate_moves(moves_beg, board, PLAYER_OPP(player));
+            auto moves_end = fill_candidate_moves(moves_beg, board, opponent(player));
             if (moves_beg == moves_end) {
                 if (is_king_under_attack(board, player))
                     return 100;
-                else if (is_king_under_attack(board, PLAYER_OPP(player)))
+                else if (is_king_under_attack(board, opponent(player)))
                     return -100;
                 else
                     return 0;
             }
 
-            return evaluate_position_max(moves_beg, moves_end, PLAYER_OPP(player), depth - 1).score;
+            return evaluate_position_max(moves_beg, moves_end, opponent(player), depth - 1).score;
         } else {
             return score_position(board);
         }

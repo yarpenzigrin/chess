@@ -1,3 +1,7 @@
+/** chess.hpp
+ *
+ * Chess engine core header-only library.
+ */
 #ifndef CHESS_HPP_
 #define CHESS_HPP_
 
@@ -6,6 +10,310 @@
 
 namespace chess
 {
+
+/** @defgroup core-types Basic types in chess engine
+ *  @{
+ */
+
+/** Basic field type
+ *  Bits contain metadata about field on the chessboard.
+ */
+using field_state_t = uint8_t;
+
+/** Field property - player
+ *  Describes whether the field is occupied by white or black player's piece. If field has not
+ *  piece on it, this property should be ignored.
+ */
+using player_t = field_state_t;
+
+/** Field property - piece
+ *  Describes the piece that the field is occupied by or if the field is empty.
+ */
+using piece_t = field_state_t;
+
+/** Field property - under white's attack
+ *  Describes whether the field is attached by any white player's piece.
+ */
+using under_white_attack_t = field_state_t;
+
+/** Field property - under black's attack
+ *  Describes whether the field is attached by any black player's piece.
+ */
+using under_black_attack_t = field_state_t;
+
+/** Field property - meta bits
+ *  Metabits from all fields of board combined together describe meta-state of the game
+ *  (not a field) - for example: castling rights.
+ */
+using field_meta_bits_t = field_state_t;
+
+/** Basic board type
+ *  Array of 64 fields from A1, B1 ... H8.
+ */
+using board_state_t = std::array<field_state_t, 64>;
+
+/** Field enumeration
+ *  Convenient type for enumerating fields of the chess board. Can be casted to integrat type to
+ *  index into `board_state_t`.
+ */
+enum field_t
+{
+    A1 = 0, B1, C1, D1, E1, F1, G1, H1,
+    A2, B2, C2, D2, E2, F2, G2, H2,
+    A3, B3, C3, D3, E3, F3, G3, H3,
+    A4, B4, C4, D4, E4, F4, G4, H4,
+    A5, B5, C5, D5, E5, F5, G5, H5,
+    A6, B6, C6, D6, E6, F6, G6, H6,
+    A7, B7, C7, D7, E7, F7, G7, H7,
+    A8, B8, C8, D8, E8, F8, G8, H8,
+    INVALID,
+    BEGIN = A1,
+    END = INVALID
+};
+
+/** Last move basic type
+ *  Describes last move. Stored in meta bits of `board_state_t`
+ */
+using last_move_t = uint16_t;
+
+/** Describes castling rights of current game. Stored in meta bits of `board_state_t`
+  * bit 0: white short castling right
+  * bit 1: white long castling right
+  * bit 2: black short castling right
+  * bit 3: black long castling right
+  * Value 0 on given bit position means that given castling type is ALLOWED
+  */
+using castling_rights_t = uint8_t;
+
+/** Basic enumeration of file (column) on a chessboard */
+enum class file_t {
+    A = 0, B, C, D, E, F, G, H,
+    BEGIN = A,
+    LAST = H,
+    MAX = 8,
+    END = MAX
+};
+
+/** Basic enumeration of rank (row) on a chessboard */
+enum class rank_t {
+    _1 = 0, _2, _3, _4, _5, _6, _7, _8,
+    BEGIN = _1,
+    LAST = _8,
+    MAX = 8,
+    END = MAX
+};
+
+/** Basic type describing a move on a chessboard */
+struct move_s {
+    /** Which player made a move */
+    player_t player;
+    /** What piece was moved */
+    piece_t piece;
+    /** From which field move was made */
+    field_t from;
+    /** Onto which field move was made */
+    field_t to;
+};
+
+/*  @} */ // core-types
+
+/** @defgroup helpers Helper functions
+ *  Allow to read and manipulate data based on basic types.
+ *  @{
+ */
+
+/** Returns opposite player's property value */
+constexpr player_t opponent(const player_t player);
+
+/** Field state property getters and setters */
+constexpr field_state_t field_get_player(const field_state_t field);
+constexpr field_state_t field_set_player(const field_state_t field, const player_t player);
+
+constexpr field_state_t field_get_piece(const field_state_t field);
+constexpr field_state_t field_set_piece(const field_state_t field, const piece_t piece);
+
+constexpr field_state_t field_set_under_white_attack(const field_state_t field);
+constexpr field_state_t field_clear_under_white_attack(const field_state_t field);
+constexpr bool field_under_white_attack(const field_state_t field);
+
+constexpr field_state_t field_set_under_black_attack(const field_state_t field);
+constexpr field_state_t field_clear_under_black_attack(const field_state_t field);
+constexpr bool field_under_black_attack(const field_state_t field);
+
+constexpr field_state_t field_get_meta_bits(const field_state_t field);
+constexpr field_state_t field_set_meta_bits(const field_state_t field,
+    const field_meta_bits_t meta_bits);
+
+/** Last move getters and setters */
+constexpr last_move_t last_move_set_player(last_move_t last_move, player_t player);
+constexpr player_t last_move_get_player(last_move_t last_move);
+
+constexpr last_move_t last_move_set_piece(last_move_t last_move, piece_t piece);
+constexpr piece_t last_move_get_piece(last_move_t last_move);
+
+constexpr last_move_t last_move_set_from(last_move_t last_move, field_t from);
+constexpr field_t last_move_get_from(last_move_t last_move);
+
+constexpr last_move_t last_move_set_to(last_move_t last_move, field_t to);
+constexpr field_t last_move_get_to(last_move_t last_move);
+
+/** Castling rights manipulation */
+constexpr castling_rights_t castling_rights_remove_white_short(const castling_rights_t rights);
+constexpr bool castling_rights_white_short(const castling_rights_t rights);
+
+constexpr castling_rights_t castling_rights_remove_white_long(const castling_rights_t rights);
+constexpr bool castling_rights_white_long(const castling_rights_t rights);
+
+constexpr castling_rights_t castling_rights_remove_black_short(const castling_rights_t rights);
+constexpr bool castling_rights_black_short(const castling_rights_t rights);
+
+constexpr castling_rights_t castling_rights_remove_black_long(const castling_rights_t rights);
+constexpr bool castling_rights_black_long(const castling_rights_t rights);
+
+/** Meta bits property getters and setters */
+constexpr void board_state_meta_set_last_move(board_state_t& board, const last_move_t last_move);
+constexpr last_move_t board_state_meta_get_last_move(const board_state_t& board);
+
+constexpr void board_state_meta_set_castling_rights(board_state_t& board,
+    const castling_rights_t rights);
+constexpr castling_rights_t board_state_meta_get_castling_rights(const board_state_t& board);
+
+/** Returns `file_t` of a field */
+constexpr file_t field_file(const field_t field);
+
+/** Returns `rank_t` of a field */
+constexpr rank_t field_rank(const field_t field);
+
+/** Makes a `field_t` from file and rank
+ *  If requested field would exceed a border of chessboard, field on the border is returned.
+ */
+constexpr field_t make_field(const uint8_t file, const uint8_t rank);
+
+/** Returns a `field_t` above field
+ *  If requested field would exceed a border of chessboard, original field is returned.
+ */
+constexpr field_t field_up(const field_t field);
+
+/** Returns a `field_t` below field
+ *  If requested field would exceed a border of chessboard, original field is returned.
+ */
+constexpr field_t field_down(const field_t field);
+
+/** Returns a `field_t` left to a field
+ *  If requested field would exceed a border of chessboard, original field is returned.
+ */
+constexpr field_t field_left(const field_t field);
+
+/** Returns a `field_t` right to a field
+ *  If requested field would exceed a border of chessboard, original field is returned.
+ */
+constexpr field_t field_right(const field_t field);
+
+/** Returns a `field_t` left and up to a field
+ *  If requested field would exceed a border of chessboard, original field is returned.
+ */
+constexpr field_t field_left_up(const field_t field);
+
+/** Returns a `field_t` right and up to a field
+ *  If requested field would exceed a border of chessboard, original field is returned.
+ */
+constexpr field_t field_right_up(const field_t field);
+
+/** Returns a `field_t` left and down to a field
+ *  If requested field would exceed a border of chessboard, original field is returned.
+ */
+constexpr field_t field_left_down(const field_t field);
+
+/** Returns a `field_t` right and down to a field
+ *  If requested field would exceed a border of chessboard, original field is returned.
+ */
+constexpr field_t field_right_down(const field_t field);
+
+/*  @} */ // helpers
+
+/** @defgroup core-defs Basic definitions in chess engine
+ *  @{
+ */
+
+/** White player property value */
+constexpr player_t PLAYER_WHITE = 1;
+
+/** Black player property value */
+constexpr player_t PLAYER_BLACK = 0;
+
+/** Pieces property values */
+constexpr piece_t PIECE_EMPTY =     0b000;
+constexpr piece_t PIECE_PAWN =      0b001;
+constexpr piece_t PIECE_KNIGHT =    0b010;
+constexpr piece_t PIECE_BISHOP =    0b011;
+constexpr piece_t PIECE_ROOK =      0b100;
+constexpr piece_t PIECE_QUEEN =     0b101;
+constexpr piece_t PIECE_KING =      0b110;
+constexpr piece_t PIECE_INVALID =   0b111;
+
+/** Castling rights property values */
+constexpr castling_rights_t CASTLING_RIGHTS_WHITE_SHORT = 0b0001;
+constexpr castling_rights_t CASTLING_RIGHTS_WHITE_LONG = 0b0010;
+constexpr castling_rights_t CASTLING_RIGHTS_BLACK_SHORT = 0b0100;
+constexpr castling_rights_t CASTLING_RIGHTS_BLACK_LONG = 0b1000;
+
+/*  @} */ // core-defs
+
+/** @defgroup core-api Core API functions
+ *  @{
+ */
+
+/** Fills board states with possible candidate moves in current postion for given player
+ *
+ * @param moves - Pointer to an array of `board_state_t` elements to be written to. Available
+ *                memory has to be sufficient to store at least 120 candidate moves.
+ * @param board - `board_state_t` which represents current position on the board.
+ * @param player - Player to make one of the candidate moves.
+ *
+ * @return Pointer to element past the last filled out candidate move. Number of generated
+ *         candidate moves can be calculated with the pointer difference between passed `moves`
+ *         argument and the return value.
+ */
+board_state_t* fill_candidate_moves(board_state_t* moves, const board_state_t& board,
+    const player_t player);
+
+/** Checks whether current `board_state_t` is valid in terms of `last_move_t` stored in metabits.
+ *
+ *  @param board - `board_state_t` which represents current position on the board.
+ *
+ *  @return - `true` if last move stored in the board state is represented correctly on the fields
+ *            of the board, otherwise `false`.
+ */
+bool validate_board_state(const board_state_t& board);
+
+/** Compares fields of two `board_state_t`'s and their castling rights
+ *  This function is useful to determine in two abstract chess positions are the same. For that
+ *  reason castling rights are taken into account, but not last move.
+ *
+ *  @param board - `board_state_t` which represents current position on the board.
+ *
+ *  @return - `true` if field pieces and playes are equal on each position and castling rights are
+ *            the same, `false` otherwise.
+ *
+ *  @note - Assumption in this function is not 100% correct. Last move made also matters when
+ *          determining if two positions are the same, due to en-passant pawn moves, when are
+ *          allowed only after specific move has been done by the opponent. For that reason, two
+ *          board states that are compared equal by this function, may generate different candidate
+ *          moves based on the stored `last_move_t` in the metabits.
+ */
+bool compare_simple_position(const board_state_t& lhs, const board_state_t& rhs);
+
+/*  @} */ // core-api
+
+/** @defgroup private-impl Private implementation
+ *  @{
+ */
+namespace
+{
+
+/** @defgroup private-bitfield Bitfield helpers
+ *  @{
+ */
 namespace bitfield
 {
 
@@ -38,165 +346,36 @@ constexpr T set_property(const T field, const U prop, const property_descriptor_
 
 }  // namespace bitfield
 
-/** Basic field type
- *  Bits contain metadata about field on the chessboard.
- */
-using field_state_t = uint8_t;
+/*  @} */ // private-bitfield
 
-/** Field property - player
- *  Describes whether the field is occupied by white or black player's piece. If field has not
- *  piece on it, this property should be ignored.
+/** @defgroup private-desc Private bitfield descriptors
+ *  @{
  */
-using player_t = field_state_t;
 
-/** White player property value */
-constexpr player_t PLAYER_WHITE = 1;
-/** Black player property value */
-constexpr player_t PLAYER_BLACK = 0;
-/** Returns opposite player's property value */
-constexpr player_t PLAYER_OPP(const player_t player) {
-    return ~player & 0b1;
-}
 /** Player property descriptor
   * Occupies bit 0 of `field_state_t`
   */
 constexpr bitfield::property_descriptor_s FIELD_PLAYER_DESC = { 0, 1 };
 
-/** Field property - piece
- *  Describes the piece that the field is occupied by or if the field is empty.
- */
-using piece_t = field_state_t;
-
-/** Pieces property values */
-constexpr piece_t PIECE_EMPTY =     0b000;
-constexpr piece_t PIECE_PAWN =      0b001;
-constexpr piece_t PIECE_KNIGHT =    0b010;
-constexpr piece_t PIECE_BISHOP =    0b011;
-constexpr piece_t PIECE_ROOK =      0b100;
-constexpr piece_t PIECE_QUEEN =     0b101;
-constexpr piece_t PIECE_KING =      0b110;
-constexpr piece_t PIECE_INVALID =   0b111;
 /** Piece property descriptor
   * Occupies bits 1-3 of `field_state_t`
   */
 constexpr bitfield::property_descriptor_s FIELD_PIECE_DESC = { 1, 3 };
 
-/** Field property - under white's attack
- *  Describes whether the field is attached by any white player's piece.
- */
-using under_white_attack_t = field_state_t;
 /** Under white attack property descriptor
   * Occupies bit 4 of `field_state_t`
   */
 constexpr bitfield::property_descriptor_s FIELD_UNDER_WHITE_ATTACK_DESC = { 4, 1 };
 
-/** Field property - under black's attack
- *  Describes whether the field is attached by any black player's piece.
- */
-using under_black_attack_t = field_state_t;
 /** Under black attack property descriptor
   * Occupies bit 5 of `field_state_t`
   */
 constexpr bitfield::property_descriptor_s FIELD_UNDER_BLACK_ATTACK_DESC = { 5, 1 };
 
-/** Field property - meta bits
- *  Metabits from all fields of board combined together describe meta-state of the game
- *  (not a field) - for example: castling rights.
- */
-using field_meta_bits_t = field_state_t;
 /** Meta bits property descriptor
   * Occupies bits 6-7 of `field_state_t`
   */
 constexpr bitfield::property_descriptor_s FIELD_META_BITS_DESC = { 6, 2 };
-
-/** Field property getters and setters */
-constexpr field_state_t field_get_player(const field_state_t field) {
-    return bitfield::get_property(field, FIELD_PLAYER_DESC);
-}
-constexpr field_state_t field_set_player(const field_state_t field, const player_t player) {
-    return bitfield::set_property(field, player, FIELD_PLAYER_DESC);
-}
-
-constexpr field_state_t field_get_piece(const field_state_t field) {
-    return bitfield::get_property(field, FIELD_PIECE_DESC);
-}
-constexpr field_state_t field_set_piece(const field_state_t field, const piece_t piece) {
-    return bitfield::set_property(field, piece, FIELD_PIECE_DESC);
-}
-
-constexpr field_state_t field_set_under_white_attack(const field_state_t field) {
-    return bitfield::set_property(field, 1, FIELD_UNDER_WHITE_ATTACK_DESC);
-}
-constexpr field_state_t field_clear_under_white_attack(const field_state_t field) {
-    return bitfield::set_property(field, 0, FIELD_UNDER_WHITE_ATTACK_DESC);
-}
-constexpr bool field_under_white_attack(const field_state_t field) {
-    return bitfield::get_property(field, FIELD_UNDER_WHITE_ATTACK_DESC);
-}
-
-constexpr field_state_t field_set_under_black_attack(const field_state_t field) {
-    return bitfield::set_property(field, 1, FIELD_UNDER_BLACK_ATTACK_DESC);
-}
-constexpr field_state_t field_clear_under_black_attack(const field_state_t field) {
-    return bitfield::set_property(field, 0, FIELD_UNDER_BLACK_ATTACK_DESC);
-}
-constexpr bool field_under_black_attack(const field_state_t field) {
-    return bitfield::get_property(field, FIELD_UNDER_BLACK_ATTACK_DESC);
-}
-
-constexpr field_state_t field_get_meta_bits(const field_state_t field) {
-    return bitfield::get_property(field, FIELD_META_BITS_DESC);
-}
-constexpr field_state_t field_set_meta_bits(const field_state_t field,
-    const field_meta_bits_t meta_bits) {
-    return bitfield::set_property(field, meta_bits, FIELD_META_BITS_DESC);
-}
-
-/** Basic field constants */
-constexpr field_state_t FF = 0;
-constexpr field_state_t FW = field_set_player(FF, PLAYER_WHITE);
-constexpr field_state_t FB = field_set_player(FF, PLAYER_BLACK);
-
-constexpr field_state_t FWP = field_set_piece(FW, PIECE_PAWN);
-constexpr field_state_t FWN = field_set_piece(FW, PIECE_KNIGHT);
-constexpr field_state_t FWB = field_set_piece(FW, PIECE_BISHOP);
-constexpr field_state_t FWR = field_set_piece(FW, PIECE_ROOK);
-constexpr field_state_t FWQ = field_set_piece(FW, PIECE_QUEEN);
-constexpr field_state_t FWK = field_set_piece(FW, PIECE_KING);
-
-constexpr field_state_t FBP = field_set_piece(FB, PIECE_PAWN);
-constexpr field_state_t FBN = field_set_piece(FB, PIECE_KNIGHT);
-constexpr field_state_t FBB = field_set_piece(FB, PIECE_BISHOP);
-constexpr field_state_t FBR = field_set_piece(FB, PIECE_ROOK);
-constexpr field_state_t FBQ = field_set_piece(FB, PIECE_QUEEN);
-constexpr field_state_t FBK = field_set_piece(FB, PIECE_KING);
-
-/** Basic board type
-  * Array of 64 fields from A1, B1 ... H8.
-  */
-using board_state_t = std::array<field_state_t, 64>;
-
-/** Field enumeration
-  * Convenient type for enumerating fields of the chess board. Can be casted to integrat type to
-  * index into `board_state_t`.
-  */
-enum field_t
-{
-    A1 = 0, B1, C1, D1, E1, F1, G1, H1,
-    A2, B2, C2, D2, E2, F2, G2, H2,
-    A3, B3, C3, D3, E3, F3, G3, H3,
-    A4, B4, C4, D4, E4, F4, G4, H4,
-    A5, B5, C5, D5, E5, F5, G5, H5,
-    A6, B6, C6, D6, E6, F6, G6, H6,
-    A7, B7, C7, D7, E7, F7, G7, H7,
-    A8, B8, C8, D8, E8, F8, G8, H8,
-    FIELD_INVALID,
-    FIELD_START = A1,
-    FIELD_STOP = FIELD_INVALID
-};
-
-/** Describes last move. Stored in meta bits of `board_state_t` */
-using last_move_t = uint16_t;
 
 /** Player property descriptor of last move struct
   * Occupies bit 0 of `last_move_t`
@@ -218,82 +397,17 @@ constexpr bitfield::property_descriptor_s LAST_MOVE_FROM_DESC = { 4, 6 };
   */
 constexpr bitfield::property_descriptor_s LAST_MOVE_TO_DESC = { 10, 6 };
 
-/** Last move getters and setters */
-constexpr last_move_t last_move_set_player(last_move_t last_move, player_t player) {
-    return bitfield::set_property(last_move, player, LAST_MOVE_PLAYER_DESC);
-}
-constexpr player_t last_move_get_player(last_move_t last_move) {
-    return static_cast<player_t>(bitfield::get_property(last_move, LAST_MOVE_PLAYER_DESC));
-}
-constexpr last_move_t last_move_set_piece(last_move_t last_move, piece_t piece) {
-    return bitfield::set_property(last_move, piece, LAST_MOVE_PIECE_DESC);
-}
-constexpr piece_t last_move_get_piece(last_move_t last_move) {
-    return static_cast<piece_t>(bitfield::get_property(last_move, LAST_MOVE_PIECE_DESC));
-}
-constexpr last_move_t last_move_set_from(last_move_t last_move, field_t from) {
-    return bitfield::set_property(last_move, from, LAST_MOVE_FROM_DESC);
-}
-constexpr field_t last_move_get_from(last_move_t last_move) {
-    return static_cast<field_t>(bitfield::get_property(last_move, LAST_MOVE_FROM_DESC));
-}
-constexpr last_move_t last_move_set_to(last_move_t last_move, field_t to) {
-    return bitfield::set_property(last_move, to, LAST_MOVE_TO_DESC);
-}
-constexpr field_t last_move_get_to(last_move_t last_move) {
-    return static_cast<field_t>(bitfield::get_property(last_move, LAST_MOVE_TO_DESC));
-}
-
 /** Last move property descriptor
   * Occupies bits 0-15 of combined meta bits
   */
 constexpr bitfield::property_descriptor_s META_BITS_LAST_MOVE_DESC = { 0, 16 };
 
-/** Describes castling rights of current game. Stored in meta bits of `board_state_t`
-  * bit 0: white short castling right
-  * bit 1: white long castling right
-  * bit 2: black short castling right
-  * bit 3: black long castling right
-  * Value 0 on given bit position means that given castling type is ALLOWED
-  */
-using castling_rights_t = uint8_t;
-
-/** Castling rights property values */
-constexpr castling_rights_t CASTLING_RIGHTS_WHITE_SHORT = 0b0001;
-constexpr castling_rights_t CASTLING_RIGHTS_WHITE_LONG = 0b0010;
-constexpr castling_rights_t CASTLING_RIGHTS_BLACK_SHORT = 0b0100;
-constexpr castling_rights_t CASTLING_RIGHTS_BLACK_LONG = 0b1000;
-
-/** Castling rights manipulation */
-constexpr castling_rights_t castling_rights_remove_white_short(const castling_rights_t rights) {
-    return rights | CASTLING_RIGHTS_WHITE_SHORT;
-}
-constexpr bool castling_rights_white_short(const castling_rights_t rights) {
-    return !(rights & CASTLING_RIGHTS_WHITE_SHORT);
-}
-constexpr castling_rights_t castling_rights_remove_white_long(const castling_rights_t rights) {
-    return rights | CASTLING_RIGHTS_WHITE_LONG;
-}
-constexpr bool castling_rights_white_long(const castling_rights_t rights) {
-    return !(rights & CASTLING_RIGHTS_WHITE_LONG);
-}
-constexpr castling_rights_t castling_rights_remove_black_short(const castling_rights_t rights) {
-    return rights | CASTLING_RIGHTS_BLACK_SHORT;
-}
-constexpr bool castling_rights_black_short(const castling_rights_t rights) {
-    return !(rights & CASTLING_RIGHTS_BLACK_SHORT);
-}
-constexpr castling_rights_t castling_rights_remove_black_long(const castling_rights_t rights) {
-    return rights | CASTLING_RIGHTS_BLACK_LONG;
-}
-constexpr bool castling_rights_black_long(const castling_rights_t rights) {
-    return !(rights & CASTLING_RIGHTS_BLACK_LONG);
-}
-
 /** Last move property descriptor
   * Occupies bits 16-19 of combined meta bits
   */
 constexpr bitfield::property_descriptor_s META_BITS_CASTLING_DESC = { 16, 4 };
+
+/*  @} */ // private-desc
 
 /** Sets value of a meta bits property in `board_state_t` */
 template <typename T>
@@ -342,98 +456,6 @@ constexpr T board_state_meta_get_bits(
     return result;
 }
 
-/** Meta bits property getters and setters */
-constexpr void board_state_meta_set_last_move(board_state_t& board, const last_move_t last_move) {
-    board_state_meta_set_bits(board, last_move, META_BITS_LAST_MOVE_DESC);
-}
-constexpr last_move_t board_state_meta_get_last_move(const board_state_t& board) {
-    return board_state_meta_get_bits<last_move_t>(board, META_BITS_LAST_MOVE_DESC);
-}
-
-constexpr void board_state_meta_set_castling_rights(
-    board_state_t& board, const castling_rights_t rights) {
-    board_state_meta_set_bits(board, rights, META_BITS_CASTLING_DESC);
-}
-constexpr castling_rights_t board_state_meta_get_castling_rights(const board_state_t& board) {
-    return board_state_meta_get_bits<castling_rights_t>(board, META_BITS_CASTLING_DESC);
-}
-
-enum class file_t {
-    A = 0, B, C, D, E, F, G, H, file_t_max
-};
-
-enum class rank_t {
-    _1 = 0, _2, _3, _4, _5, _6, _7, _8, rank_t_max
-};
-
-constexpr file_t field_file(const field_t field) {
-    return field != FIELD_INVALID
-        ? static_cast<file_t>(
-            static_cast<uint8_t>(field) % static_cast<uint8_t>(file_t::file_t_max))
-        : file_t::file_t_max;
-}
-
-constexpr rank_t field_rank(const field_t field) {
-    return field != FIELD_INVALID
-        ? static_cast<rank_t>(
-            static_cast<uint8_t>(field) / static_cast<uint8_t>(rank_t::rank_t_max))
-        : rank_t::rank_t_max;
-}
-
-constexpr field_t make_field(const uint8_t file, const uint8_t rank) {
-    return (static_cast<uint8_t>(file_t::file_t_max) <= file or
-        static_cast<uint8_t>(rank_t::rank_t_max) <= rank)
-        ? FIELD_INVALID
-        : static_cast<field_t>(rank * static_cast<uint8_t>(rank_t::rank_t_max) + file);
-}
-
-constexpr field_t field_up(const field_t field) {
-    return make_field(
-        static_cast<uint8_t>(field_file(field)), static_cast<uint8_t>(field_rank(field)) + 1);
-}
-
-constexpr field_t field_down(const field_t field) {
-    return make_field(
-        static_cast<uint8_t>(field_file(field)), static_cast<uint8_t>(field_rank(field)) - 1);
-}
-
-constexpr field_t field_left(const field_t field) {
-    return make_field(
-        static_cast<uint8_t>(field_file(field)) - 1, static_cast<uint8_t>(field_rank(field)));
-}
-
-constexpr field_t field_right(const field_t field) {
-    return make_field(
-        static_cast<uint8_t>(field_file(field)) + 1, static_cast<uint8_t>(field_rank(field)));
-}
-
-constexpr field_t field_left_up(const field_t field) {
-    return make_field(
-        static_cast<uint8_t>(field_file(field)) - 1, static_cast<uint8_t>(field_rank(field)) + 1);
-}
-
-constexpr field_t field_right_up(const field_t field) {
-    return make_field(
-        static_cast<uint8_t>(field_file(field)) + 1, static_cast<uint8_t>(field_rank(field)) + 1);
-}
-
-constexpr field_t field_left_down(const field_t field) {
-    return make_field(
-        static_cast<uint8_t>(field_file(field)) - 1, static_cast<uint8_t>(field_rank(field)) - 1);
-}
-
-constexpr field_t field_right_down(const field_t field) {
-    return make_field(
-        static_cast<uint8_t>(field_file(field)) + 1, static_cast<uint8_t>(field_rank(field)) - 1);
-}
-
-struct move_s {
-    player_t player;
-    piece_t piece;
-    field_t from;
-    field_t to;
-};
-
 bool check_last_move(const board_state_t& board, const move_s& move) {
     last_move_t last_move = board_state_meta_get_last_move(board);
     player_t last_move_player = last_move_get_player(last_move);
@@ -466,7 +488,7 @@ void clear_fields_under_attack(board_state_t& board) {
 }
 
 void update_field_under_attack(board_state_t& board, const field_t field, const player_t player) {
-    if (FIELD_INVALID != field) {
+    if (field_t::INVALID != field) {
         if (PLAYER_WHITE == player) {
             board[field] = field_set_under_white_attack(board[field]);
         } else {
@@ -504,7 +526,7 @@ void update_ranged_fields_under_attack_op(
     field_t target_field = field;
     do {
         target_field = operation(target_field);
-        if (FIELD_INVALID == target_field) break;
+        if (field_t::INVALID == target_field) break;
         if (PIECE_EMPTY == field_get_piece(board[target_field])) {
             update_field_under_attack(board, target_field, player);
             continue;
@@ -547,8 +569,8 @@ void update_king_fields_under_attack(
 
 void update_fields_under_attack(board_state_t& board) {
     clear_fields_under_attack(board);
-    for (uint8_t field_idx = static_cast<uint8_t>(FIELD_START);
-         field_idx < static_cast<uint8_t>(FIELD_STOP);
+    for (uint8_t field_idx = static_cast<uint8_t>(field_t::BEGIN);
+         field_idx < static_cast<uint8_t>(field_t::END);
          ++field_idx) {
         field_t field = static_cast<field_t>(field_idx);
         piece_t piece = field_get_piece(board[field]);
@@ -625,7 +647,7 @@ board_state_t* apply_move_if_valid(board_state_t* moves, const move_s& move) {
 board_state_t* add_white_pawn_move_up(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     field_t target_field = field_up(field);
-    if (FIELD_INVALID == target_field or PIECE_EMPTY != field_get_piece(board[target_field]))
+    if (field_t::INVALID == target_field or PIECE_EMPTY != field_get_piece(board[target_field]))
         return moves;
 
     if (rank_t::_8 == field_rank(target_field)) {
@@ -659,10 +681,10 @@ board_state_t* add_white_pawn_move_up_long(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     if (rank_t::_2 != field_rank(field)) return moves;
     field_t target_field = field_up(field);
-    if (FIELD_INVALID == target_field or PIECE_EMPTY != field_get_piece(board[target_field]))
+    if (field_t::INVALID == target_field or PIECE_EMPTY != field_get_piece(board[target_field]))
         return moves;
     target_field = field_up(target_field);
-    if (FIELD_INVALID == target_field or PIECE_EMPTY != field_get_piece(board[target_field]))
+    if (field_t::INVALID == target_field or PIECE_EMPTY != field_get_piece(board[target_field]))
         return moves;
 
     *moves = board;
@@ -672,7 +694,7 @@ board_state_t* add_white_pawn_move_up_long(
 board_state_t* add_white_pawn_capture_left_up(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     field_t target_field = field_left_up(field);
-    if (FIELD_INVALID == target_field or
+    if (field_t::INVALID == target_field or
         PIECE_EMPTY == field_get_piece(board[target_field]) or
         PLAYER_BLACK != field_get_player(board[target_field]))
         return moves;
@@ -684,7 +706,7 @@ board_state_t* add_white_pawn_capture_left_up(
 board_state_t* add_white_pawn_capture_right_up(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     field_t target_field = field_right_up(field);
-    if (FIELD_INVALID == target_field or
+    if (field_t::INVALID == target_field or
         PIECE_EMPTY == field_get_piece(board[target_field]) or
         PLAYER_BLACK != field_get_player(board[target_field]))
         return moves;
@@ -737,7 +759,7 @@ board_state_t* fill_white_pawn_candidate_moves(
 board_state_t* add_black_pawn_move_down(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     field_t target_field = field_down(field);
-    if (FIELD_INVALID == target_field or PIECE_EMPTY != field_get_piece(board[target_field]))
+    if (field_t::INVALID == target_field or PIECE_EMPTY != field_get_piece(board[target_field]))
         return moves;
 
     if (rank_t::_1 == field_rank(target_field)) {
@@ -767,15 +789,14 @@ board_state_t* add_black_pawn_move_down(
     }
 }
 
-
 board_state_t* add_black_pawn_move_down_long(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     if (rank_t::_7 != field_rank(field)) return moves;
     field_t target_field = field_down(field);
-    if (FIELD_INVALID == target_field or PIECE_EMPTY != field_get_piece(board[target_field]))
+    if (field_t::INVALID == target_field or PIECE_EMPTY != field_get_piece(board[target_field]))
         return moves;
     target_field = field_down(target_field);
-    if (FIELD_INVALID == target_field or PIECE_EMPTY != field_get_piece(board[target_field]))
+    if (field_t::INVALID == target_field or PIECE_EMPTY != field_get_piece(board[target_field]))
         return moves;
 
     *moves = board;
@@ -785,7 +806,7 @@ board_state_t* add_black_pawn_move_down_long(
 board_state_t* add_black_pawn_capture_left_down(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     field_t target_field = field_left_down(field);
-    if (FIELD_INVALID == target_field or
+    if (field_t::INVALID == target_field or
         PIECE_EMPTY == field_get_piece(board[target_field]) or
         PLAYER_WHITE != field_get_player(board[target_field]))
         return moves;
@@ -797,7 +818,7 @@ board_state_t* add_black_pawn_capture_left_down(
 board_state_t* add_black_pawn_capture_right_down(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     field_t target_field = field_right_down(field);
-    if (FIELD_INVALID == target_field or
+    if (field_t::INVALID == target_field or
         PIECE_EMPTY == field_get_piece(board[target_field]) or
         PLAYER_WHITE != field_get_player(board[target_field]))
         return moves;
@@ -857,7 +878,7 @@ board_state_t* fill_pawn_candidate_moves(
 board_state_t* fill_regular_candidate_move(
     board_state_t* moves, const board_state_t& board, const player_t player, const piece_t piece,
     const field_t field, const field_t target_field) {
-    if (FIELD_INVALID == target_field or
+    if (field_t::INVALID == target_field or
         (PIECE_EMPTY != field_get_piece(board[target_field]) and 
          player == field_get_player(board[target_field])) or
         (PIECE_KING == piece and (
@@ -897,7 +918,7 @@ board_state_t* fill_ranged_candidate_moves_op(
     uint8_t move_cnt = 0u;
     do {
         target_field = operation(target_field);
-        if (FIELD_INVALID == target_field) break;
+        if (field_t::INVALID == target_field) break;
         if (PIECE_EMPTY == field_get_piece(board[target_field])) {
             *moves = board;
             moves = apply_move_if_valid(moves, { player, piece, field, target_field });
@@ -1051,11 +1072,212 @@ board_state_t* fill_king_candidate_moves(
     return moves;
 }
 
+}  // namespace
+
+/*  @} */ // private-impl
+
+/** @defgroup impl Implementation of public functions
+ *  @{
+ */
+
+constexpr player_t opponent(const player_t player) { return ~player & 0b1; }
+
+constexpr field_state_t field_get_player(const field_state_t field) {
+    return bitfield::get_property(field, FIELD_PLAYER_DESC);
+}
+
+constexpr field_state_t field_set_player(const field_state_t field, const player_t player) {
+    return bitfield::set_property(field, player, FIELD_PLAYER_DESC);
+}
+
+constexpr field_state_t field_get_piece(const field_state_t field) {
+    return bitfield::get_property(field, FIELD_PIECE_DESC);
+}
+
+constexpr field_state_t field_set_piece(const field_state_t field, const piece_t piece) {
+    return bitfield::set_property(field, piece, FIELD_PIECE_DESC);
+}
+
+constexpr field_state_t field_set_under_white_attack(const field_state_t field) {
+    return bitfield::set_property(field, 1, FIELD_UNDER_WHITE_ATTACK_DESC);
+}
+
+constexpr field_state_t field_clear_under_white_attack(const field_state_t field) {
+    return bitfield::set_property(field, 0, FIELD_UNDER_WHITE_ATTACK_DESC);
+}
+
+constexpr bool field_under_white_attack(const field_state_t field) {
+    return bitfield::get_property(field, FIELD_UNDER_WHITE_ATTACK_DESC);
+}
+
+constexpr field_state_t field_set_under_black_attack(const field_state_t field) {
+    return bitfield::set_property(field, 1, FIELD_UNDER_BLACK_ATTACK_DESC);
+}
+
+constexpr field_state_t field_clear_under_black_attack(const field_state_t field) {
+    return bitfield::set_property(field, 0, FIELD_UNDER_BLACK_ATTACK_DESC);
+}
+
+constexpr bool field_under_black_attack(const field_state_t field) {
+    return bitfield::get_property(field, FIELD_UNDER_BLACK_ATTACK_DESC);
+}
+
+constexpr field_state_t field_get_meta_bits(const field_state_t field) {
+    return bitfield::get_property(field, FIELD_META_BITS_DESC);
+}
+
+constexpr field_state_t field_set_meta_bits(const field_state_t field,
+    const field_meta_bits_t meta_bits) {
+    return bitfield::set_property(field, meta_bits, FIELD_META_BITS_DESC);
+}
+
+constexpr last_move_t last_move_set_player(last_move_t last_move, player_t player) {
+    return bitfield::set_property(last_move, player, LAST_MOVE_PLAYER_DESC);
+}
+
+constexpr player_t last_move_get_player(last_move_t last_move) {
+    return static_cast<player_t>(bitfield::get_property(last_move, LAST_MOVE_PLAYER_DESC));
+}
+
+constexpr last_move_t last_move_set_piece(last_move_t last_move, piece_t piece) {
+    return bitfield::set_property(last_move, piece, LAST_MOVE_PIECE_DESC);
+}
+
+constexpr piece_t last_move_get_piece(last_move_t last_move) {
+    return static_cast<piece_t>(bitfield::get_property(last_move, LAST_MOVE_PIECE_DESC));
+}
+
+constexpr last_move_t last_move_set_from(last_move_t last_move, field_t from) {
+    return bitfield::set_property(last_move, from, LAST_MOVE_FROM_DESC);
+}
+
+constexpr field_t last_move_get_from(last_move_t last_move) {
+    return static_cast<field_t>(bitfield::get_property(last_move, LAST_MOVE_FROM_DESC));
+}
+
+constexpr last_move_t last_move_set_to(last_move_t last_move, field_t to) {
+    return bitfield::set_property(last_move, to, LAST_MOVE_TO_DESC);
+}
+
+constexpr field_t last_move_get_to(last_move_t last_move) {
+    return static_cast<field_t>(bitfield::get_property(last_move, LAST_MOVE_TO_DESC));
+}
+
+constexpr castling_rights_t castling_rights_remove_white_short(const castling_rights_t rights) {
+    return rights | CASTLING_RIGHTS_WHITE_SHORT;
+}
+
+constexpr bool castling_rights_white_short(const castling_rights_t rights) {
+    return !(rights & CASTLING_RIGHTS_WHITE_SHORT);
+}
+
+constexpr castling_rights_t castling_rights_remove_white_long(const castling_rights_t rights) {
+    return rights | CASTLING_RIGHTS_WHITE_LONG;
+}
+
+constexpr bool castling_rights_white_long(const castling_rights_t rights) {
+    return !(rights & CASTLING_RIGHTS_WHITE_LONG);
+}
+
+constexpr castling_rights_t castling_rights_remove_black_short(const castling_rights_t rights) {
+    return rights | CASTLING_RIGHTS_BLACK_SHORT;
+}
+
+constexpr bool castling_rights_black_short(const castling_rights_t rights) {
+    return !(rights & CASTLING_RIGHTS_BLACK_SHORT);
+}
+
+constexpr castling_rights_t castling_rights_remove_black_long(const castling_rights_t rights) {
+    return rights | CASTLING_RIGHTS_BLACK_LONG;
+}
+
+constexpr bool castling_rights_black_long(const castling_rights_t rights) {
+    return !(rights & CASTLING_RIGHTS_BLACK_LONG);
+}
+
+constexpr void board_state_meta_set_last_move(board_state_t& board, const last_move_t last_move) {
+    board_state_meta_set_bits(board, last_move, META_BITS_LAST_MOVE_DESC);
+}
+
+constexpr last_move_t board_state_meta_get_last_move(const board_state_t& board) {
+    return board_state_meta_get_bits<last_move_t>(board, META_BITS_LAST_MOVE_DESC);
+}
+
+constexpr void board_state_meta_set_castling_rights(
+    board_state_t& board, const castling_rights_t rights) {
+    board_state_meta_set_bits(board, rights, META_BITS_CASTLING_DESC);
+}
+
+constexpr castling_rights_t board_state_meta_get_castling_rights(const board_state_t& board) {
+    return board_state_meta_get_bits<castling_rights_t>(board, META_BITS_CASTLING_DESC);
+}
+
+constexpr file_t field_file(const field_t field) {
+    return field != field_t::INVALID
+        ? static_cast<file_t>(
+            static_cast<uint8_t>(field) % static_cast<uint8_t>(file_t::MAX))
+        : file_t::MAX;
+}
+
+constexpr rank_t field_rank(const field_t field) {
+    return field != field_t::INVALID
+        ? static_cast<rank_t>(
+            static_cast<uint8_t>(field) / static_cast<uint8_t>(rank_t::MAX))
+        : rank_t::MAX;
+}
+
+constexpr field_t make_field(const uint8_t file, const uint8_t rank) {
+    return (static_cast<uint8_t>(file_t::MAX) <= file or
+        static_cast<uint8_t>(rank_t::MAX) <= rank)
+        ? field_t::INVALID
+        : static_cast<field_t>(rank * static_cast<uint8_t>(rank_t::MAX) + file);
+}
+
+constexpr field_t field_up(const field_t field) {
+    return make_field(
+        static_cast<uint8_t>(field_file(field)), static_cast<uint8_t>(field_rank(field)) + 1);
+}
+
+constexpr field_t field_down(const field_t field) {
+    return make_field(
+        static_cast<uint8_t>(field_file(field)), static_cast<uint8_t>(field_rank(field)) - 1);
+}
+
+constexpr field_t field_left(const field_t field) {
+    return make_field(
+        static_cast<uint8_t>(field_file(field)) - 1, static_cast<uint8_t>(field_rank(field)));
+}
+
+constexpr field_t field_right(const field_t field) {
+    return make_field(
+        static_cast<uint8_t>(field_file(field)) + 1, static_cast<uint8_t>(field_rank(field)));
+}
+
+constexpr field_t field_left_up(const field_t field) {
+    return make_field(
+        static_cast<uint8_t>(field_file(field)) - 1, static_cast<uint8_t>(field_rank(field)) + 1);
+}
+
+constexpr field_t field_right_up(const field_t field) {
+    return make_field(
+        static_cast<uint8_t>(field_file(field)) + 1, static_cast<uint8_t>(field_rank(field)) + 1);
+}
+
+constexpr field_t field_left_down(const field_t field) {
+    return make_field(
+        static_cast<uint8_t>(field_file(field)) - 1, static_cast<uint8_t>(field_rank(field)) - 1);
+}
+
+constexpr field_t field_right_down(const field_t field) {
+    return make_field(
+        static_cast<uint8_t>(field_file(field)) + 1, static_cast<uint8_t>(field_rank(field)) - 1);
+}
+
 board_state_t* fill_candidate_moves(
     board_state_t* moves, const board_state_t& board, const player_t player) {
     auto temp_moves = moves;
-    for (uint8_t field_idx = static_cast<uint8_t>(FIELD_START);
-         field_idx < static_cast<uint8_t>(FIELD_STOP);
+    for (uint8_t field_idx = static_cast<uint8_t>(field_t::BEGIN);
+         field_idx < static_cast<uint8_t>(field_t::END);
          ++field_idx) {
         if (player != field_get_player(board[field_idx])) continue;
 
@@ -1103,8 +1325,8 @@ bool validate_board_state(const board_state_t& board) {
 }
 
 bool compare_simple_position(const board_state_t& lhs, const board_state_t& rhs) {
-    for (uint8_t field_idx = static_cast<uint8_t>(FIELD_START);
-         field_idx < static_cast<uint8_t>(FIELD_STOP);
+    for (uint8_t field_idx = static_cast<uint8_t>(field_t::BEGIN);
+         field_idx < static_cast<uint8_t>(field_t::END);
          ++field_idx) {
         auto left_field = lhs[field_idx];
         auto right_field = rhs[field_idx];
@@ -1117,6 +1339,36 @@ bool compare_simple_position(const board_state_t& lhs, const board_state_t& rhs)
     return board_state_meta_get_castling_rights(lhs) == board_state_meta_get_castling_rights(rhs);
 }
 
+/*  @} */ // impl
+
+/** @defgroup extra-defs Extra definitions for user's convenience
+ *  @{
+ */
+
+/** Basic field constants */
+namespace {
+constexpr field_state_t FF = 0;
+constexpr field_state_t FW = field_set_player(FF, PLAYER_WHITE);
+constexpr field_state_t FB = field_set_player(FF, PLAYER_BLACK);
+}  // namespace
+
+/** White player's pieces constants */
+constexpr field_state_t FWP = field_set_piece(FW, PIECE_PAWN);
+constexpr field_state_t FWN = field_set_piece(FW, PIECE_KNIGHT);
+constexpr field_state_t FWB = field_set_piece(FW, PIECE_BISHOP);
+constexpr field_state_t FWR = field_set_piece(FW, PIECE_ROOK);
+constexpr field_state_t FWQ = field_set_piece(FW, PIECE_QUEEN);
+constexpr field_state_t FWK = field_set_piece(FW, PIECE_KING);
+
+/** Black player's pieces constants */
+constexpr field_state_t FBP = field_set_piece(FB, PIECE_PAWN);
+constexpr field_state_t FBN = field_set_piece(FB, PIECE_KNIGHT);
+constexpr field_state_t FBB = field_set_piece(FB, PIECE_BISHOP);
+constexpr field_state_t FBR = field_set_piece(FB, PIECE_ROOK);
+constexpr field_state_t FBQ = field_set_piece(FB, PIECE_QUEEN);
+constexpr field_state_t FBK = field_set_piece(FB, PIECE_KING);
+
+/** Convenient definition of starting chess board */
 constexpr board_state_t START_BOARD =
 {
     FWR, FWN, FWB, FWQ, FWK, FWB, FWN, FWR,
@@ -1129,6 +1381,7 @@ constexpr board_state_t START_BOARD =
     FBR, FBN, FBB, FBQ, FBK, FBB, FBN, FBR
 };
 
+/** Convenient definition of empty chess board */
 constexpr board_state_t EMPTY_BOARD =
 {
     FF , FF , FF , FF , FF , FF , FF , FF ,
@@ -1140,6 +1393,8 @@ constexpr board_state_t EMPTY_BOARD =
     FF , FF , FF , FF , FF , FF , FF , FF ,
     FF , FF , FF , FF , FF , FF , FF , FF
 };
+
+/*  @} */ // extra-defs
 
 }  // namespace chess
 
