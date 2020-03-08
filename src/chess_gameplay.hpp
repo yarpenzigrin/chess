@@ -1,3 +1,7 @@
+/** chess_gameplay.hpp
+ *
+ * Chess engine gameplay header-only library.
+ */
 #ifndef CHESS_GAMEPLAY_HPP_
 #define CHESS_GAMEPLAY_HPP_
 
@@ -5,6 +9,71 @@
 
 namespace chess
 {
+
+/** @defgroup gameplay-types Basic types in chess gameplay
+ *  @{
+ */
+
+/** Type of game action */
+enum class game_action_t { MOVE, FORFEIT };
+
+/** Move request type
+ *  This function is provided by chess client. Chess game will be calling this function in order
+ *  to request current player for a move.
+ */
+using request_move_f = game_action_t(*)(board_state_t&);
+
+/** Enumeration of possible game results */
+enum class game_result_t {
+    WHITE_WON_FORFEIT, WHITE_WON_CHECKMATE,
+    BLACK_WON_FORFEIT, BLACK_WON_CHECKMATE,
+    DRAW_STALEMATE, DRAW_INSUFFICIENT_MATERIAL, DRAW_REPETITION, DRAW_50_MOVE_RULE,
+    ERROR
+};
+
+/*  @} */ // gameplay-types
+
+/** @defgroup gameplay-api Basic types in chess gameplay
+ *  @{
+ */
+
+/** Default null-logging logger
+ *  If no logger type is provided by the client, this logger will be used in order to silence
+ *  log messages.
+ */
+struct null_log_t {
+    template <typename T>
+    null_log_t& operator<<(const T&) { return *this; }
+};
+
+/** Chess game entry point
+ *  Starts and conducts the game querying players for moves. First player queried for a move is a
+ *  white player. In order to start from black player, arguments `white_move_fn` and
+ *  `black_move_fn` could be switched.
+ *
+ *  @param log_t - Type of logger to use. By default null-logger is instantiated.
+ *  @param memory - Memory that can be used by chess game to allocate move history and candidate
+ *                  moves in order to determine whether checkmate occured. Should be enough to
+ *                  fit at least 170 `board_state_t`'s (64 bit * 170 = 10 KiB).
+ *  @param white_move_fn - Function to handle white player's next move. Function is passed a
+ *                         reference to a mutable `board_state_t` representing current position,
+ *                         and modification of this data is expected. Function returns type of game
+ *                         action (move of forfeit).
+ *  @param black_move_fn - as for `white_move_fn` for black player
+ *  @param board - starting position on the chessboard
+ *
+ *  @return Returns `game_result_t` describing game outcome.
+ */
+template <typename log_t = null_log_t>
+game_result_t play(void* memory, request_move_f white_move_fn, request_move_f black_move_fn,
+    board_state_t board = START_BOARD);
+
+/*  @} */ // gameplay-api
+
+/** @defgroup gameplay-ringbuf Simple ring buffer implementation
+ *  @{
+ */
+
 namespace detail
 {
 
@@ -64,6 +133,14 @@ constexpr T* ring_buffer_next(const ring_buffer_s<T, N>& buffer, T* const iter) 
          it = ring_buffer_next(buffer, it))
 
 }  // detail
+
+/*  @} */ // gameplay-ringbuf
+
+/** @defgroup gameplay-private-impl Private implementation
+ *  @{
+ */
+namespace
+{
 
 bool check_draw_by_insufficient_material(const board_state_t& board) {
     bool white_bishop_found = false;
@@ -141,27 +218,17 @@ void update_insignificant_move_cnt(std::size_t& insignificant_move_cnt,
     ++insignificant_move_cnt;
 }
 
-enum class game_action_t {
-    MOVE, FORFEIT
-};
+}  // namespace
 
-using request_move_f = game_action_t(*)(board_state_t&);
+/*  @} */ // gameplay-private-impl
 
-enum class game_result_t {
-    WHITE_WON_FORFEIT, WHITE_WON_CHECKMATE,
-    BLACK_WON_FORFEIT, BLACK_WON_CHECKMATE,
-    DRAW_STALEMATE, DRAW_INSUFFICIENT_MATERIAL, DRAW_REPETITION, DRAW_50_MOVE_RULE,
-    ERROR
-};
-
-struct null_log_t {
-    template <typename T>
-    null_log_t& operator<<(const T&) { return *this; }
-} null_log;
+/** @defgroup gameplay-impl Implementation of public functions
+ *  @{
+ */
 
 template <typename log_t = null_log_t>
 game_result_t play(void* memory, request_move_f white_move_fn, request_move_f black_move_fn,
-    board_state_t board = START_BOARD) {
+    board_state_t board) {
     log_t log;
     if (nullptr == memory or nullptr == white_move_fn or nullptr == black_move_fn) {
         log << "Game ended with error.";
@@ -255,6 +322,8 @@ game_result_t play(void* memory, request_move_f white_move_fn, request_move_f bl
     log << "Game ended with weird error.\n";
     return game_result_t::ERROR;
 }
+
+/*  @} */ // gameplay-impl
 
 }  // namespace chess
 
