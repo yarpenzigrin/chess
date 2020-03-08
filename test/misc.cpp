@@ -1,4 +1,5 @@
 #include <memory>
+#include "chess_gameplay.hpp"
 #include "chess_tty_gui.hpp"
 #include "chesstest.hpp"
 

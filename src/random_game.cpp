@@ -2,6 +2,7 @@
 #include <memory>
 #include <iostream>
 #include <thread>
+#include "chess_gameplay.hpp"
 #include "chess_tty_gui.hpp"
 
 using namespace chess;
