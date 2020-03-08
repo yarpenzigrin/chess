@@ -317,14 +317,18 @@ namespace
 namespace bitfield
 {
 
+template <typename T>
 struct property_descriptor_s
 {
     std::size_t bit_pos;
     std::size_t bit_width;
+    std::size_t mask;
+
+    constexpr property_descriptor_s(std::size_t pos, std::size_t width);
 };
 
 template <typename T>
-constexpr T property_mask(const property_descriptor_s desc)
+constexpr T property_mask(const property_descriptor_s<T> desc)
 {
     // Example:
     // For descriptor = { bit_pos = 4, bit_width = 3 }
@@ -333,15 +337,21 @@ constexpr T property_mask(const property_descriptor_s desc)
 }
 
 template <typename T>
-constexpr T get_property(const T field, const property_descriptor_s desc)
+constexpr T get_property(const T field, const property_descriptor_s<T> desc)
 {
-    return (field & property_mask<T>(desc)) >> desc.bit_pos;
+    return (field & desc.mask) >> desc.bit_pos;
 }
 
 template <typename T, typename U>
-constexpr T set_property(const T field, const U prop, const property_descriptor_s desc)
+constexpr T set_property(const T field, const U prop, const property_descriptor_s<T> desc)
 {
-    return (field & ~property_mask<T>(desc)) | (prop << desc.bit_pos);
+    return (field & ~desc.mask) | (prop << desc.bit_pos);
+}
+
+template <typename T>
+constexpr property_descriptor_s<T>::property_descriptor_s(std::size_t pos, std::size_t width)
+: bit_pos{ pos }, bit_width{ width }, mask{ bitfield::property_mask<T>(*this) }
+{
 }
 
 }  // namespace bitfield
@@ -355,64 +365,64 @@ constexpr T set_property(const T field, const U prop, const property_descriptor_
 /** Player property descriptor
   * Occupies bit 0 of `field_state_t`
   */
-constexpr bitfield::property_descriptor_s FIELD_PLAYER_DESC = { 0, 1 };
+constexpr bitfield::property_descriptor_s<field_state_t> FIELD_PLAYER_DESC = { 0, 1 };
 
 /** Piece property descriptor
   * Occupies bits 1-3 of `field_state_t`
   */
-constexpr bitfield::property_descriptor_s FIELD_PIECE_DESC = { 1, 3 };
+constexpr bitfield::property_descriptor_s<field_state_t> FIELD_PIECE_DESC = { 1, 3 };
 
 /** Under white attack property descriptor
   * Occupies bit 4 of `field_state_t`
   */
-constexpr bitfield::property_descriptor_s FIELD_UNDER_WHITE_ATTACK_DESC = { 4, 1 };
+constexpr bitfield::property_descriptor_s<field_state_t> FIELD_UNDER_WHITE_ATTACK_DESC = { 4, 1 };
 
 /** Under black attack property descriptor
   * Occupies bit 5 of `field_state_t`
   */
-constexpr bitfield::property_descriptor_s FIELD_UNDER_BLACK_ATTACK_DESC = { 5, 1 };
+constexpr bitfield::property_descriptor_s<field_state_t> FIELD_UNDER_BLACK_ATTACK_DESC = { 5, 1 };
 
 /** Meta bits property descriptor
   * Occupies bits 6-7 of `field_state_t`
   */
-constexpr bitfield::property_descriptor_s FIELD_META_BITS_DESC = { 6, 2 };
+constexpr bitfield::property_descriptor_s<field_state_t> FIELD_META_BITS_DESC = { 6, 2 };
 
 /** Player property descriptor of last move struct
   * Occupies bit 0 of `last_move_t`
   */
-constexpr bitfield::property_descriptor_s LAST_MOVE_PLAYER_DESC = { 0, 1 };
+constexpr bitfield::property_descriptor_s<last_move_t> LAST_MOVE_PLAYER_DESC = { 0, 1 };
 
 /** Piece property descriptor of last move struct
   * Occupies bits 1-3 of `last_move_t`
   */
-constexpr bitfield::property_descriptor_s LAST_MOVE_PIECE_DESC = { 1, 3 };
+constexpr bitfield::property_descriptor_s<last_move_t> LAST_MOVE_PIECE_DESC = { 1, 3 };
 
 /** From property descriptor of last move struct
   * Occupies bits 4-9 of `last_move_t`
   */
-constexpr bitfield::property_descriptor_s LAST_MOVE_FROM_DESC = { 4, 6 };
+constexpr bitfield::property_descriptor_s<last_move_t> LAST_MOVE_FROM_DESC = { 4, 6 };
 
 /** To property descriptor of last move struct
   * Occupies bits 10-15 of `last_move_t`
   */
-constexpr bitfield::property_descriptor_s LAST_MOVE_TO_DESC = { 10, 6 };
+constexpr bitfield::property_descriptor_s<last_move_t> LAST_MOVE_TO_DESC = { 10, 6 };
 
 /** Last move property descriptor
   * Occupies bits 0-15 of combined meta bits
   */
-constexpr bitfield::property_descriptor_s META_BITS_LAST_MOVE_DESC = { 0, 16 };
+constexpr bitfield::property_descriptor_s<field_meta_bits_t> META_BITS_LAST_MOVE_DESC = { 0, 16 };
 
 /** Last move property descriptor
   * Occupies bits 16-19 of combined meta bits
   */
-constexpr bitfield::property_descriptor_s META_BITS_CASTLING_DESC = { 16, 4 };
+constexpr bitfield::property_descriptor_s<field_meta_bits_t> META_BITS_CASTLING_DESC = { 16, 4 };
 
 /*  @} */ // private-desc
 
 /** Sets value of a meta bits property in `board_state_t` */
-template <typename T>
+template <typename T, typename U>
 constexpr void board_state_meta_set_bits(
-    board_state_t& board, T value, const bitfield::property_descriptor_s desc) {
+    board_state_t& board, T value, const bitfield::property_descriptor_s<U> desc) {
 
     const auto field_meta_bits_width = FIELD_META_BITS_DESC.bit_width;
     auto consume = [&](const auto bit_pos, const auto bit_width, const auto field_idx)
@@ -437,9 +447,9 @@ constexpr void board_state_meta_set_bits(
 }
 
 /** Gets value of a meta bits property in `board_state_t` */
-template <typename T>
+template <typename T, typename U>
 constexpr T board_state_meta_get_bits(
-    const board_state_t& board, const bitfield::property_descriptor_s desc) {
+    const board_state_t& board, const bitfield::property_descriptor_s<U> desc) {
     T result = {};
     const auto field_meta_bits_width = FIELD_META_BITS_DESC.bit_width;
     const auto start_field_idx = desc.bit_pos / field_meta_bits_width;
@@ -576,6 +586,7 @@ void update_fields_under_attack(board_state_t& board) {
         piece_t piece = field_get_piece(board[field]);
         player_t player = field_get_player(board[field]);
         switch (piece) {
+            case PIECE_EMPTY: break;
             case PIECE_PAWN: update_pawn_fields_under_attack(board, field, player); break;
             case PIECE_KNIGHT: update_knight_fields_under_attack(board, field, player); break;
             case PIECE_BISHOP: update_diagonal_fields_under_attack(board, field, player); break;
@@ -636,12 +647,12 @@ board_state_t* apply_move_if_valid(board_state_t* moves, const move_s& move) {
     board[move.to] = field_set_piece(field_set_player(board[move.to], move.player), move.piece);
 
     update_fields_under_attack(board);
-    if (is_king_under_attack(board, move.player))
-        return moves;
-
-    update_last_move(board, move);
-    update_castling_rights(board, move);
-    return moves + 1;
+    if (not is_king_under_attack(board, move.player)) {
+        update_last_move(board, move);
+        update_castling_rights(board, move);
+        return moves + 1;
+    }
+    return moves;
 }
 
 board_state_t* add_white_pawn_move_up(

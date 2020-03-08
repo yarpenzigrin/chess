@@ -382,6 +382,6 @@ int main() {
     player_cm_storage = player_memory.get();
     minimax_storage = minimax_memory.get();
 
-    auto result = play<stream_t>(game_memory.get(), white_minimax<4>, black_minimax<4>);
+    auto result = play<stream_t>(game_memory.get(), white_minimax<4>, black_random);
     announce_result(result);
 }
