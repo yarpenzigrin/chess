@@ -119,6 +119,7 @@ auto one_pawn_board(const field_t pawn_position, const field_state_t pawn_type =
 
 const board_state_t* find_candidate_move(
     const board_state_t* moves, const board_state_t* moves_end, const move_s& last_move) {
+    temp_print_c_moves(moves, moves_end);
     return std::find_if(moves, moves_end, [&last_move](const auto& board) {
             bool success = check_last_move(board, last_move);
             if (success) {
@@ -476,9 +477,9 @@ TEST(CandidateMoves_Knight_White_InvalidMoves_ValidMoves_Captures) {
     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
     auto white_knigth_moves = std::count_if(c_moves_beg, c_moves_end, [](const auto& board)
         {
-            last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
-            player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
-            piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+            last_move_t last_move = board_state_meta_get_last_move(board);
+            player_t last_move_player = last_move_get_player(last_move);
+            piece_t last_move_piece = last_move_get_piece(last_move);
             return PLAYER_WHITE == last_move_player and PIECE_KNIGHT == last_move_piece;
         });
     ASSERT(5u == white_knigth_moves);
@@ -499,9 +500,9 @@ TEST(CandidateMoves_Knight_Black_InvalidMoves_ValidMoves_Captures) {
     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
     auto black_knigth_moves = std::count_if(c_moves_beg, c_moves_end, [](const auto& board)
         {
-            last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
-            player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
-            piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+            last_move_t last_move = board_state_meta_get_last_move(board);
+            player_t last_move_player = last_move_get_player(last_move);
+            piece_t last_move_piece = last_move_get_piece(last_move);
             return PLAYER_BLACK == last_move_player and PIECE_KNIGHT == last_move_piece;
         });
 
@@ -523,9 +524,9 @@ TEST(CandidateMoves_Bishop_White_InvalidMoves_ValidMoves_Captures) {
     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
     auto white_bishop_moves = std::count_if(c_moves_beg, c_moves_end, [](const auto& board)
         {
-            last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
-            player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
-            piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+            last_move_t last_move = board_state_meta_get_last_move(board);
+            player_t last_move_player = last_move_get_player(last_move);
+            piece_t last_move_piece = last_move_get_piece(last_move);
             return PLAYER_WHITE == last_move_player and PIECE_BISHOP == last_move_piece;
         });
 
@@ -549,9 +550,9 @@ TEST(CandidateMoves_Bishop_Black_InvalidMoves_ValidMoves_Captures) {
     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
     auto black_bishop_moves = std::count_if(c_moves_beg, c_moves_end, [](const auto& board)
         {
-            last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
-            player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
-            piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+            last_move_t last_move = board_state_meta_get_last_move(board);
+            player_t last_move_player = last_move_get_player(last_move);
+            piece_t last_move_piece = last_move_get_piece(last_move);
             return PLAYER_BLACK == last_move_player and PIECE_BISHOP == last_move_piece;
         });
 
@@ -575,9 +576,9 @@ TEST(CandidateMoves_Rook_White_InvalidMoves_ValidMoves_Captures) {
     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
     auto white_rook_moves = std::count_if(c_moves_beg, c_moves_end, [](const auto& board)
         {
-            last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
-            player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
-            piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+            last_move_t last_move = board_state_meta_get_last_move(board);
+            player_t last_move_player = last_move_get_player(last_move);
+            piece_t last_move_piece = last_move_get_piece(last_move);
             return PLAYER_WHITE == last_move_player and PIECE_ROOK == last_move_piece;
         });
 
@@ -603,9 +604,9 @@ TEST(CandidateMoves_Rook_Black_InvalidMoves_ValidMoves_Captures) {
     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
     auto black_rook_moves = std::count_if(c_moves_beg, c_moves_end, [](const auto& board)
         {
-            last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
-            player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
-            piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+            last_move_t last_move = board_state_meta_get_last_move(board);
+            player_t last_move_player = last_move_get_player(last_move);
+            piece_t last_move_piece = last_move_get_piece(last_move);
             return PLAYER_BLACK == last_move_player and PIECE_ROOK == last_move_piece;
         });
 
@@ -631,9 +632,9 @@ TEST(CandidateMoves_Queen_White_InvalidMoves_ValidMoves_Captures) {
     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
     auto white_queen_moves = std::count_if(c_moves_beg, c_moves_end, [](const auto& board)
         {
-            last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
-            player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
-            piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+            last_move_t last_move = board_state_meta_get_last_move(board);
+            player_t last_move_player = last_move_get_player(last_move);
+            piece_t last_move_piece = last_move_get_piece(last_move);
             return PLAYER_WHITE == last_move_player and PIECE_QUEEN == last_move_piece;
         });
 
@@ -669,9 +670,9 @@ TEST(CandidateMoves_Queen_Black_InvalidMoves_ValidMoves_Captures) {
     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
     auto black_queen_moves = std::count_if(c_moves_beg, c_moves_end, [](const auto& board)
         {
-            last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
-            player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
-            piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+            last_move_t last_move = board_state_meta_get_last_move(board);
+            player_t last_move_player = last_move_get_player(last_move);
+            piece_t last_move_piece = last_move_get_piece(last_move);
             return PLAYER_BLACK == last_move_player and PIECE_QUEEN == last_move_piece;
         });
 
@@ -712,9 +713,9 @@ TEST(CandidateMoves_King_White_InvalidMoves_ValidMoves_Captures) {
     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
     auto white_king_moves = std::count_if(c_moves_beg, c_moves_end, [](const auto& board)
         {
-            last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
-            player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
-            piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+            last_move_t last_move = board_state_meta_get_last_move(board);
+            player_t last_move_player = last_move_get_player(last_move);
+            piece_t last_move_piece = last_move_get_piece(last_move);
             return PLAYER_WHITE == last_move_player and PIECE_KING == last_move_piece;
         });
 
@@ -742,9 +743,9 @@ TEST(CandidateMoves_King_Black_InvalidMoves_ValidMoves_Captures) {
     ASSERT(all_candidate_moves_are_valid(c_moves.get(), c_moves_end));
     auto black_king_moves = std::count_if(c_moves_beg, c_moves_end, [](const auto& board)
         {
-            last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
-            player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
-            piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
+            last_move_t last_move = board_state_meta_get_last_move(board);
+            player_t last_move_player = last_move_get_player(last_move);
+            piece_t last_move_piece = last_move_get_piece(last_move);
             return PLAYER_BLACK == last_move_player and PIECE_KING == last_move_piece;
         });
 

@@ -9,6 +9,8 @@ namespace gui
 {
 
 constexpr std::array<char, 8> PIECE_TO_CHAR = { '.', 'P', 'N', 'B', 'R', 'Q', 'K', '*' };
+constexpr std::array<char, 8> RANK_TO_CHAR = { '1', '2', '3', '4', '5', '6', '7', '8' };
+constexpr std::array<char, 8> FILE_TO_CHAR = { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H' };
 
 const char* COLOR_BLACK = "\e]P0222222";
 const char* COLOR_DARKGREY = "\e]P8222222";
@@ -32,15 +34,38 @@ const char* COLOR_PLAYER_BLACK = COLOR_BLUE;
 const char* COLOR_NO_PLAYER = COLOR_BROWN;
 const char* COLOR_STOP = "\e[m";
 
+}  // namespace gui
+}  // namespace chess
+
+template <typename T>
+struct colored_manip {
+    const T& value;
+    const char* color = chess::gui::COLOR_NO_PLAYER;
+};
+
+template <typename T, typename U>
+U& operator<<(U& stream, const colored_manip<T>& colored_value) {
+    stream << colored_value.color << colored_value.value << chess::gui::COLOR_STOP;
+    return stream;
+}
+
+namespace chess
+{
+namespace gui
+{
+
+template <typename T>
+colored_manip<T> colored(const T& value, player_t player, piece_t piece) {
+    return colored_manip<T>{ value, piece == PIECE_EMPTY
+        ? COLOR_NO_PLAYER
+        : (PLAYER_WHITE == player ? COLOR_PLAYER_WHITE : COLOR_PLAYER_BLACK) };
+}
+
 template <typename T>
 void print_field(T& stream, const field_state_t field) {
     player_t player = field_get_player(field);
     piece_t piece = field_get_piece(field);
-    bool occupied = piece != PIECE_EMPTY;
-
-    const char* color = !occupied ? COLOR_NO_PLAYER :
-        (PLAYER_WHITE == player ? COLOR_PLAYER_WHITE : COLOR_PLAYER_BLACK);
-    stream << color << PIECE_TO_CHAR[piece] << COLOR_STOP;
+    stream << colored(PIECE_TO_CHAR[piece], player, piece);
 }
 
 template <typename T>
@@ -57,6 +82,41 @@ void print_board(T& stream, const board_state_t& board) {
         stream << '\n' << " \n";
     }
     stream << "   A  B  C  D  E  F  G  H\n\n";
+    auto castling = board_state_meta_get_castling_rights(board);
+    stream << "Castling:\n"
+        << " * " << colored("WHITE -> SHORT: ", PLAYER_WHITE, PIECE_INVALID)
+        << colored(
+            castling_rights_white_short(castling) ? "YES" : "NO", PLAYER_WHITE, PIECE_INVALID)
+        << colored(" | LONG: ", PLAYER_WHITE, PIECE_INVALID)
+        << colored(
+            castling_rights_white_long(castling) ? "YES" : "NO", PLAYER_WHITE, PIECE_INVALID)
+        << '\n'
+        << " * " << colored("BLACK -> SHORT: ", PLAYER_BLACK, PIECE_INVALID)
+        << colored(
+            castling_rights_black_short(castling) ? "YES" : "NO", PLAYER_BLACK, PIECE_INVALID)
+        << colored(" | LONG: ", PLAYER_BLACK, PIECE_INVALID)
+        << colored(
+            castling_rights_black_long(castling) ? "YES" : "NO", PLAYER_BLACK, PIECE_INVALID)
+        << '\n';
+
+    last_move_t last_move = board_state_meta_get_last_move(board);
+    player_t last_move_player = last_move_get_player(last_move);
+    piece_t last_move_piece = last_move_get_piece(last_move);
+    field_t last_move_from = last_move_get_from(last_move);
+    field_t last_move_to = last_move_get_to(last_move);
+    stream << "Last move: ";
+    if (PIECE_EMPTY == last_move_piece or PIECE_INVALID == last_move_piece)
+    {
+        stream << "<none>\n";
+    }
+    else
+    {
+        auto file_str = [&](auto f){ return FILE_TO_CHAR[static_cast<int>(field_file(f))]; };
+        auto rank_str = [&](auto f){ return RANK_TO_CHAR[static_cast<int>(field_rank(f))]; };
+        stream << colored(PIECE_TO_CHAR[last_move_piece], last_move_player, last_move_piece)
+            << ' ' << file_str(last_move_from) << rank_str(last_move_from)
+            << " -> " << file_str(last_move_to) << rank_str(last_move_to) << '\n';
+    }
 }
 
 }  // namespace gui

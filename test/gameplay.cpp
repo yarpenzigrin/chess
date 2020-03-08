@@ -11,7 +11,7 @@ void draw_board(const board_state_t& board) {
 
 void print_candidate_moves(const board_state_t& board) {
     auto c_moves_beg = std::make_unique<board_state_t[]>(32);
-    auto last_player = LAST_MOVE_GET_PLAYER(BOARD_STATE_META_GET_LAST_MOVE(board));
+    auto last_player = last_move_get_player(board_state_meta_get_last_move(board));
     auto next_player = (PLAYER_WHITE == last_player ? PLAYER_BLACK : PLAYER_WHITE);
     auto c_moves_end = fill_candidate_moves(c_moves_beg.get(), board, next_player);
     for (auto it = c_moves_beg.get(); it != c_moves_end; ++it)
@@ -311,7 +311,7 @@ TEST(Gameplay_Play_AfterWhiteMove_DrawByThreeFoldRepetitionWithPerpetualCheck) {
         board[C5] = FWQ;
         board[E2] = FWK;
     });
-    BOARD_STATE_META_SET_CASTLING_RIGHTS(board, 0b1111);
+    board_state_meta_set_castling_rights(board, 0b1111);
     // REPEATED POSITION: Queen C8 - King A8
     fill_white_move_seq({
         { PLAYER_WHITE, PIECE_QUEEN, C5, C8 }, // 1st occurrence of the same position
@@ -336,7 +336,7 @@ TEST(Gameplay_Play_AfterBlackMove_DrawByThreeFoldRepetitionDancingKings) {
         board[H4] = FWP;
         board[H5] = FBP;
     });
-    BOARD_STATE_META_SET_CASTLING_RIGHTS(board, 0b1111);
+    board_state_meta_set_castling_rights(board, 0b1111);
     // REPEATED POSITION: Kings on E3 and E5
     fill_white_move_seq({
         { PLAYER_WHITE, PIECE_KING, E2, E3 },
@@ -372,7 +372,7 @@ TEST(Gameplay_Play_AfterWhiteMove_DrawBy50MoveRule) {
         board[H1] = FWB;
         board[A1] = FBB;
     });
-    BOARD_STATE_META_SET_CASTLING_RIGHTS(board, 0b1111);
+    board_state_meta_set_castling_rights(board, 0b1111);
     
     std::vector<move_s> white_loop_1st_half = {
         { PLAYER_WHITE, PIECE_BISHOP, H1, G2 },
@@ -450,7 +450,7 @@ TEST(Gameplay_Play_AfterBlackMove_DrawBy50MoveRule) {
         board[H1] = FWB;
         board[A1] = FBB;
     });
-    BOARD_STATE_META_SET_CASTLING_RIGHTS(board, 0b1111);
+    board_state_meta_set_castling_rights(board, 0b1111);
     
     std::vector<move_s> white_loop_1st_half = {
         { PLAYER_WHITE, PIECE_BISHOP, H1, G2 },

@@ -6,35 +6,40 @@
 
 namespace chess
 {
-
-namespace
+namespace bitfield
 {
 
-constexpr std::size_t MASK(std::size_t pos, std::size_t size = 0b1) {
-    return (size << pos);
+struct property_descriptor_s
+{
+    std::size_t bit_pos;
+    std::size_t bit_width;
+};
+
+template <typename T>
+constexpr T property_mask(const property_descriptor_s desc)
+{
+    // Example:
+    // For descriptor = { bit_pos = 4, bit_width = 3 }
+    // Mask = ~( 0b10000000 | 0b00001111 ) = ~ 0b10001111 = 0b01110000
+    return ~(0xFF << (desc.bit_width + desc.bit_pos) | ~(0xFF << desc.bit_pos));
 }
 
 template <typename T>
-constexpr T SET_BIT(T field, std::size_t pos) {
-    return field | MASK(pos);
+constexpr T get_property(const T field, const property_descriptor_s desc)
+{
+    // constexpr auto mask = field_property_mask(desc);
+    return (field & property_mask<T>(desc)) >> desc.bit_pos;
 }
 
-template <typename T>
-constexpr T CLEAR_BIT(T field, std::size_t pos) {
-    return field & ~MASK(pos);
+template <typename T, typename U>
+constexpr T set_property(const T field, const U prop, const property_descriptor_s desc)
+{
+    // constexpr auto mask = field_property_mask(desc);
+    // constexpr auto shifted_prop = prop << desc.bit_pos;
+    return (field & ~property_mask<T>(desc)) | (prop << desc.bit_pos);
 }
 
-template <typename T>
-constexpr T SET_VALUE(T field, std::size_t value, std::size_t pos, std::size_t mask) {
-    return (field & ~mask) + ((value << pos) & mask);
-}
-
-template <typename T>
-constexpr T GET_VALUE(T field, std::size_t pos, std::size_t mask) {
-    return ((field >> pos) & mask);
-}
-
-}  // namespace
+}  // namespace bitfield
 
 namespace detail
 {
@@ -101,15 +106,6 @@ constexpr T* ring_buffer_next(const ring_buffer_s<T, N>& buffer, T* const iter) 
  */
 using field_state_t = uint8_t;
 
-/** Field property descriptor
- *  Contains information about how property is stored in `field_state_t` bits
- */
-struct field_property_descriptor_s
-{
-    std::size_t bit_pos;
-    std::size_t bit_width;
-};
-
 /** Field property - player
  *  Describes whether the field is occupied by white or black player's piece. If field has not
  *  piece on it, this property should be ignored.
@@ -127,7 +123,7 @@ constexpr player_t PLAYER_OPP(const player_t player) {
 /** Player property descriptor
   * Occupies bit 0 of `field_state_t`
   */
-constexpr field_property_descriptor_s FIELD_PLAYER_DESC = { 0, 1 };
+constexpr bitfield::property_descriptor_s FIELD_PLAYER_DESC = { 0, 1 };
 
 /** Field property - piece
  *  Describes the piece that the field is occupied by or if the field is empty.
@@ -146,7 +142,7 @@ constexpr piece_t PIECE_INVALID =   0b111;
 /** Piece property descriptor
   * Occupies bits 1-3 of `field_state_t`
   */
-constexpr field_property_descriptor_s FIELD_PIECE_DESC = { 1, 3 };
+constexpr bitfield::property_descriptor_s FIELD_PIECE_DESC = { 1, 3 };
 
 /** Field property - under white's attack
  *  Describes whether the field is attached by any white player's piece.
@@ -155,7 +151,7 @@ using under_white_attack_t = field_state_t;
 /** Under white attack property descriptor
   * Occupies bit 4 of `field_state_t`
   */
-constexpr field_property_descriptor_s FIELD_UNDER_WHITE_ATTACK_DESC = { 4, 1 };
+constexpr bitfield::property_descriptor_s FIELD_UNDER_WHITE_ATTACK_DESC = { 4, 1 };
 
 /** Field property - under black's attack
  *  Describes whether the field is attached by any black player's piece.
@@ -164,7 +160,7 @@ using under_black_attack_t = field_state_t;
 /** Under black attack property descriptor
   * Occupies bit 5 of `field_state_t`
   */
-constexpr field_property_descriptor_s FIELD_UNDER_BLACK_ATTACK_DESC = { 5, 1 };
+constexpr bitfield::property_descriptor_s FIELD_UNDER_BLACK_ATTACK_DESC = { 5, 1 };
 
 /** Field property - meta bits
  *  Metabits from all fields of board combined together describe meta-state of the game
@@ -174,71 +170,52 @@ using field_meta_bits_t = field_state_t;
 /** Meta bits property descriptor
   * Occupies bits 6-7 of `field_state_t`
   */
-constexpr field_property_descriptor_s FIELD_META_BITS_DESC = { 6, 2 };
+constexpr bitfield::property_descriptor_s FIELD_META_BITS_DESC = { 6, 2 };
 
-constexpr field_state_t field_property_mask(const field_property_descriptor_s desc)
-{
-    // Example:
-    // For descriptor = { bit_pos = 4, bit_width = 3 }
-    // Mask = ~( 0b10000000 | 0b00001111 ) = ~ 0b10001111 = 0b01110000
-    return ~(0xFF << (desc.bit_width + desc.bit_pos) | ~(0xFF << desc.bit_pos));
-}
-constexpr field_state_t field_get_property(const field_state_t field,
-    const field_property_descriptor_s desc)
-{
-    // constexpr auto mask = field_property_mask(desc);
-    return (field & field_property_mask(desc)) >> desc.bit_pos;
-}
-constexpr field_state_t field_set_property(const field_state_t field, const field_state_t prop,
-    const field_property_descriptor_s desc)
-{
-    // constexpr auto mask = field_property_mask(desc);
-    // constexpr auto shifted_prop = prop << desc.bit_pos;
-    return (field & ~field_property_mask(desc)) | (prop << desc.bit_pos);
-}
-
+/** Field property getters and setters */
 constexpr field_state_t field_get_player(const field_state_t field) {
-    return field_get_property(field, FIELD_PLAYER_DESC);
+    return bitfield::get_property(field, FIELD_PLAYER_DESC);
 }
 constexpr field_state_t field_set_player(const field_state_t field, const player_t player) {
-    return field_set_property(field, player, FIELD_PLAYER_DESC);
+    return bitfield::set_property(field, player, FIELD_PLAYER_DESC);
 }
 
 constexpr field_state_t field_get_piece(const field_state_t field) {
-    return field_get_property(field, FIELD_PIECE_DESC);
+    return bitfield::get_property(field, FIELD_PIECE_DESC);
 }
 constexpr field_state_t field_set_piece(const field_state_t field, const piece_t piece) {
-    return field_set_property(field, piece, FIELD_PIECE_DESC);
+    return bitfield::set_property(field, piece, FIELD_PIECE_DESC);
 }
 
 constexpr field_state_t field_set_under_white_attack(const field_state_t field) {
-    return field_set_property(field, 1, FIELD_UNDER_WHITE_ATTACK_DESC);
+    return bitfield::set_property(field, 1, FIELD_UNDER_WHITE_ATTACK_DESC);
 }
 constexpr field_state_t field_clear_under_white_attack(const field_state_t field) {
-    return field_set_property(field, 0, FIELD_UNDER_WHITE_ATTACK_DESC);
+    return bitfield::set_property(field, 0, FIELD_UNDER_WHITE_ATTACK_DESC);
 }
 constexpr bool field_under_white_attack(const field_state_t field) {
-    return field_get_property(field, FIELD_UNDER_WHITE_ATTACK_DESC);
+    return bitfield::get_property(field, FIELD_UNDER_WHITE_ATTACK_DESC);
 }
 
 constexpr field_state_t field_set_under_black_attack(const field_state_t field) {
-    return field_set_property(field, 1, FIELD_UNDER_BLACK_ATTACK_DESC);
+    return bitfield::set_property(field, 1, FIELD_UNDER_BLACK_ATTACK_DESC);
 }
 constexpr field_state_t field_clear_under_black_attack(const field_state_t field) {
-    return field_set_property(field, 0, FIELD_UNDER_BLACK_ATTACK_DESC);
+    return bitfield::set_property(field, 0, FIELD_UNDER_BLACK_ATTACK_DESC);
 }
 constexpr bool field_under_black_attack(const field_state_t field) {
-    return field_get_property(field, FIELD_UNDER_BLACK_ATTACK_DESC);
+    return bitfield::get_property(field, FIELD_UNDER_BLACK_ATTACK_DESC);
 }
 
 constexpr field_state_t field_get_meta_bits(const field_state_t field) {
-    return field_get_property(field, FIELD_META_BITS_DESC);
+    return bitfield::get_property(field, FIELD_META_BITS_DESC);
 }
 constexpr field_state_t field_set_meta_bits(const field_state_t field,
     const field_meta_bits_t meta_bits) {
-    return field_set_property(field, meta_bits, FIELD_META_BITS_DESC);
+    return bitfield::set_property(field, meta_bits, FIELD_META_BITS_DESC);
 }
 
+/** Basic field constants */
 constexpr field_state_t FF = 0;
 constexpr field_state_t FW = field_set_player(FF, PLAYER_WHITE);
 constexpr field_state_t FB = field_set_player(FF, PLAYER_BLACK);
@@ -257,32 +234,15 @@ constexpr field_state_t FBR = field_set_piece(FB, PIECE_ROOK);
 constexpr field_state_t FBQ = field_set_piece(FB, PIECE_QUEEN);
 constexpr field_state_t FBK = field_set_piece(FB, PIECE_KING);
 
+/** Basic board type
+  * Array of 64 fields from A1, B1 ... H8.
+  */
 using board_state_t = std::array<field_state_t, 64>;
 
-constexpr board_state_t START_BOARD =
-{
-    FWR, FWN, FWB, FWQ, FWK, FWB, FWN, FWR,
-    FWP, FWP, FWP, FWP, FWP, FWP, FWP, FWP,
-    FF , FF , FF , FF , FF , FF , FF , FF ,
-    FF , FF , FF , FF , FF , FF , FF , FF ,
-    FF , FF , FF , FF , FF , FF , FF , FF ,
-    FF , FF , FF , FF , FF , FF , FF , FF ,
-    FBP, FBP, FBP, FBP, FBP, FBP, FBP, FBP,
-    FBR, FBN, FBB, FBQ, FBK, FBB, FBN, FBR
-};
-
-constexpr board_state_t EMPTY_BOARD =
-{
-    FF , FF , FF , FF , FF , FF , FF , FF ,
-    FF , FF , FF , FF , FF , FF , FF , FF ,
-    FF , FF , FF , FF , FF , FF , FF , FF ,
-    FF , FF , FF , FF , FF , FF , FF , FF ,
-    FF , FF , FF , FF , FF , FF , FF , FF ,
-    FF , FF , FF , FF , FF , FF , FF , FF ,
-    FF , FF , FF , FF , FF , FF , FF , FF ,
-    FF , FF , FF , FF , FF , FF , FF , FF
-};
-
+/** Field enumeration
+  * Convenient type for enumerating fields of the chess board. Can be casted to integrat type to
+  * index into `board_state_t`.
+  */
 enum field_t
 {
     A1 = 0, B1, C1, D1, E1, F1, G1, H1,
@@ -298,151 +258,168 @@ enum field_t
     FIELD_STOP = FIELD_INVALID
 };
 
-template <typename T>
-constexpr void BOARD_STATE_META_SET_BITS(
-    board_state_t& board, const T value, const std::size_t start_pos, const std::size_t end_pos) {
-    constexpr auto FIELD_META_BITS_WIDTH = 0b11;
-    constexpr auto FIELD_META_BITS_SIZE = FIELD_META_BITS_DESC.bit_width;
-    const std::size_t start_field_idx = start_pos / FIELD_META_BITS_SIZE;
-    const std::size_t end_field_idx = end_pos / FIELD_META_BITS_SIZE;
+/** Describes last move. Stored in meta bits of `board_state_t` */
+using last_move_t = uint16_t;
 
-    std::size_t field_shift_idx = 0;
-    for (std::size_t field_idx = start_field_idx;
-         field_idx < end_field_idx;
-         ++field_idx, ++field_shift_idx) {
-        std::size_t shift = field_shift_idx * FIELD_META_BITS_SIZE;
-        field_meta_bits_t meta_bits = GET_VALUE(value, shift, FIELD_META_BITS_WIDTH);
-        board[field_idx] = field_set_meta_bits(board[field_idx], meta_bits);
-    }
+/** Player property descriptor of last move struct
+  * Occupies bit 0 of `last_move_t`
+  */
+constexpr bitfield::property_descriptor_s LAST_MOVE_PLAYER_DESC = { 0, 1 };
+
+/** Piece property descriptor of last move struct
+  * Occupies bits 1-3 of `last_move_t`
+  */
+constexpr bitfield::property_descriptor_s LAST_MOVE_PIECE_DESC = { 1, 3 };
+
+/** From property descriptor of last move struct
+  * Occupies bits 4-9 of `last_move_t`
+  */
+constexpr bitfield::property_descriptor_s LAST_MOVE_FROM_DESC = { 4, 6 };
+
+/** To property descriptor of last move struct
+  * Occupies bits 10-15 of `last_move_t`
+  */
+constexpr bitfield::property_descriptor_s LAST_MOVE_TO_DESC = { 10, 6 };
+
+/** Last move getters and setters */
+constexpr last_move_t last_move_set_player(last_move_t last_move, player_t player) {
+    return bitfield::set_property(last_move, player, LAST_MOVE_PLAYER_DESC);
+}
+constexpr player_t last_move_get_player(last_move_t last_move) {
+    return static_cast<player_t>(bitfield::get_property(last_move, LAST_MOVE_PLAYER_DESC));
+}
+constexpr last_move_t last_move_set_piece(last_move_t last_move, piece_t piece) {
+    return bitfield::set_property(last_move, piece, LAST_MOVE_PIECE_DESC);
+}
+constexpr piece_t last_move_get_piece(last_move_t last_move) {
+    return static_cast<piece_t>(bitfield::get_property(last_move, LAST_MOVE_PIECE_DESC));
+}
+constexpr last_move_t last_move_set_from(last_move_t last_move, field_t from) {
+    return bitfield::set_property(last_move, from, LAST_MOVE_FROM_DESC);
+}
+constexpr field_t last_move_get_from(last_move_t last_move) {
+    return static_cast<field_t>(bitfield::get_property(last_move, LAST_MOVE_FROM_DESC));
+}
+constexpr last_move_t last_move_set_to(last_move_t last_move, field_t to) {
+    return bitfield::set_property(last_move, to, LAST_MOVE_TO_DESC);
+}
+constexpr field_t last_move_get_to(last_move_t last_move) {
+    return static_cast<field_t>(bitfield::get_property(last_move, LAST_MOVE_TO_DESC));
 }
 
-template <typename T>
-constexpr T BOARD_STATE_META_GET_BITS(
-    const board_state_t& board, const std::size_t start_pos, const std::size_t end_pos) {
-    T result = {};
-    constexpr auto FIELD_META_BITS_WIDTH = 0b11;
-    constexpr auto FIELD_META_BITS_SIZE = FIELD_META_BITS_DESC.bit_width;
-    const std::size_t start_field_idx = start_pos / FIELD_META_BITS_SIZE;
-    const std::size_t end_field_idx = end_pos / FIELD_META_BITS_SIZE;
+/** Last move property descriptor
+  * Occupies bits 0-15 of combined meta bits
+  */
+constexpr bitfield::property_descriptor_s META_BITS_LAST_MOVE_DESC = { 0, 16 };
 
-    std::size_t field_shift_idx = 0;
+/** Describes castling rights of current game. Stored in meta bits of `board_state_t`
+  * bit 0: white short castling right
+  * bit 1: white long castling right
+  * bit 2: black short castling right
+  * bit 3: black long castling right
+  * Value 0 on given bit position means that given castling type is ALLOWED
+  */
+using castling_rights_t = uint8_t;
+
+/** Castling rights property values */
+constexpr castling_rights_t CASTLING_RIGHTS_WHITE_SHORT = 0b0001;
+constexpr castling_rights_t CASTLING_RIGHTS_WHITE_LONG = 0b0010;
+constexpr castling_rights_t CASTLING_RIGHTS_BLACK_SHORT = 0b0100;
+constexpr castling_rights_t CASTLING_RIGHTS_BLACK_LONG = 0b1000;
+
+/** Castling rights manipulation */
+constexpr castling_rights_t castling_rights_remove_white_short(const castling_rights_t rights) {
+    return rights | CASTLING_RIGHTS_WHITE_SHORT;
+}
+constexpr bool castling_rights_white_short(const castling_rights_t rights) {
+    return !(rights & CASTLING_RIGHTS_WHITE_SHORT);
+}
+constexpr castling_rights_t castling_rights_remove_white_long(const castling_rights_t rights) {
+    return rights | CASTLING_RIGHTS_WHITE_LONG;
+}
+constexpr bool castling_rights_white_long(const castling_rights_t rights) {
+    return !(rights & CASTLING_RIGHTS_WHITE_LONG);
+}
+constexpr castling_rights_t castling_rights_remove_black_short(const castling_rights_t rights) {
+    return rights | CASTLING_RIGHTS_BLACK_SHORT;
+}
+constexpr bool castling_rights_black_short(const castling_rights_t rights) {
+    return !(rights & CASTLING_RIGHTS_BLACK_SHORT);
+}
+constexpr castling_rights_t castling_rights_remove_black_long(const castling_rights_t rights) {
+    return rights | CASTLING_RIGHTS_BLACK_LONG;
+}
+constexpr bool castling_rights_black_long(const castling_rights_t rights) {
+    return !(rights & CASTLING_RIGHTS_BLACK_LONG);
+}
+
+/** Last move property descriptor
+  * Occupies bits 16-19 of combined meta bits
+  */
+constexpr bitfield::property_descriptor_s META_BITS_CASTLING_DESC = { 16, 4 };
+
+/** Sets value of a meta bits property in `board_state_t` */
+template <typename T>
+constexpr void board_state_meta_set_bits(
+    board_state_t& board, T value, const bitfield::property_descriptor_s desc) {
+
+    const auto field_meta_bits_width = FIELD_META_BITS_DESC.bit_width;
+    auto consume = [&](const auto bit_pos, const auto bit_width, const auto field_idx)
+    {
+        auto meta_bits = field_get_meta_bits(board[field_idx]);
+        auto value_to_set = bitfield::get_property(value, { 0u, bit_width });
+        meta_bits = bitfield::set_property(meta_bits, value_to_set, { bit_pos, bit_width });
+        board[field_idx] = field_set_meta_bits(board[field_idx], meta_bits);
+        value >>= bit_width;
+    };
+
+    const auto start_field_idx = desc.bit_pos / field_meta_bits_width;
+    const auto end_field_idx = (desc.bit_pos + desc.bit_width) / field_meta_bits_width;
+
+    consume(desc.bit_pos % field_meta_bits_width,
+        field_meta_bits_width - (desc.bit_pos % field_meta_bits_width), start_field_idx);
+    for (auto field_idx = start_field_idx + 1; field_idx < end_field_idx - 1; ++field_idx) {
+        consume(0u, field_meta_bits_width, field_idx);
+    }
+    consume(0u, (end_field_idx - 1) * field_meta_bits_width - (desc.bit_pos + desc.bit_width),
+        end_field_idx - 1);
+}
+
+/** Gets value of a meta bits property in `board_state_t` */
+template <typename T>
+constexpr T board_state_meta_get_bits(
+    const board_state_t& board, const bitfield::property_descriptor_s desc) {
+    T result = {};
+    const auto field_meta_bits_width = FIELD_META_BITS_DESC.bit_width;
+    const auto start_field_idx = desc.bit_pos / field_meta_bits_width;
+    const auto end_field_idx = (desc.bit_pos + desc.bit_width) / field_meta_bits_width;
+
+    auto field_shift_idx = 0u;
     for (std::size_t field_idx = start_field_idx;
          field_idx < end_field_idx;
          ++field_idx, ++field_shift_idx) {
+        auto shift = field_shift_idx * field_meta_bits_width;
         field_meta_bits_t meta_bits = field_get_meta_bits(board[field_idx]);
-        std::size_t shift = field_shift_idx * FIELD_META_BITS_SIZE;
-        result = SET_VALUE(result, meta_bits, shift, FIELD_META_BITS_WIDTH << shift);
+        result |= meta_bits << shift;
     }
     return result;
 }
 
-using last_move_t = uint16_t;
-
-constexpr std::size_t BOARD_STATE_META_LAST_MOVE_POS = 0;
-constexpr std::size_t BOARD_STATE_META_LAST_MOVE_BITS = 16;
-constexpr void BOARD_STATE_META_SET_LAST_MOVE(board_state_t& board, last_move_t last_move) {
-    BOARD_STATE_META_SET_BITS(board, last_move,
-        BOARD_STATE_META_LAST_MOVE_POS,
-        BOARD_STATE_META_LAST_MOVE_POS + BOARD_STATE_META_LAST_MOVE_BITS);
+/** Meta bits property getters and setters */
+constexpr void board_state_meta_set_last_move(board_state_t& board, const last_move_t last_move) {
+    board_state_meta_set_bits(board, last_move, META_BITS_LAST_MOVE_DESC);
 }
-constexpr last_move_t BOARD_STATE_META_GET_LAST_MOVE(const board_state_t& board) {
-    return BOARD_STATE_META_GET_BITS<last_move_t>(board,
-        BOARD_STATE_META_LAST_MOVE_POS,
-        BOARD_STATE_META_LAST_MOVE_POS + BOARD_STATE_META_LAST_MOVE_BITS);
+constexpr last_move_t board_state_meta_get_last_move(const board_state_t& board) {
+    return board_state_meta_get_bits<last_move_t>(board, META_BITS_LAST_MOVE_DESC);
 }
 
-constexpr std::size_t LAST_MOVE_PLAYER_POS = 0;
-constexpr std::size_t LAST_MOVE_PLAYER_WIDTH = 0b1;
-constexpr std::size_t LAST_MOVE_PLAYER_SIZE = 1;
-constexpr std::size_t LAST_MOVE_PLAYER_MASK = MASK(LAST_MOVE_PLAYER_POS, LAST_MOVE_PLAYER_WIDTH);
-constexpr last_move_t LAST_MOVE_SET_PLAYER(last_move_t last_move, player_t player) {
-    return SET_VALUE(last_move, player, LAST_MOVE_PLAYER_POS, LAST_MOVE_PLAYER_MASK);
+constexpr void board_state_meta_set_castling_rights(
+    board_state_t& board, const castling_rights_t rights) {
+    board_state_meta_set_bits(board, rights, META_BITS_CASTLING_DESC);
 }
-constexpr player_t LAST_MOVE_GET_PLAYER(last_move_t last_move) {
-    return (last_move & LAST_MOVE_PLAYER_MASK) >> LAST_MOVE_PLAYER_POS;
+constexpr castling_rights_t board_state_meta_get_castling_rights(const board_state_t& board) {
+    return board_state_meta_get_bits<castling_rights_t>(board, META_BITS_CASTLING_DESC);
 }
-
-constexpr std::size_t LAST_MOVE_PIECE_POS = 1;
-constexpr std::size_t LAST_MOVE_PIECE_WIDTH = 0b111;
-constexpr std::size_t LAST_MOVE_PIECE_SIZE = 3;
-constexpr std::size_t LAST_MOVE_PIECE_MASK = MASK(LAST_MOVE_PIECE_POS, LAST_MOVE_PIECE_WIDTH);
-constexpr last_move_t LAST_MOVE_SET_PIECE(last_move_t last_move, piece_t piece) {
-    return SET_VALUE(last_move, piece, LAST_MOVE_PIECE_POS, LAST_MOVE_PIECE_MASK);
-}
-constexpr piece_t LAST_MOVE_GET_PIECE(last_move_t last_move) {
-    return (last_move & LAST_MOVE_PIECE_MASK) >> LAST_MOVE_PIECE_POS;
-}
-
-constexpr std::size_t LAST_MOVE_FROM_POS = 4;
-constexpr std::size_t LAST_MOVE_FROM_WIDTH = 0b111111;
-constexpr std::size_t LAST_MOVE_FROM_SIZE = 6;
-constexpr std::size_t LAST_MOVE_FROM_MASK = MASK(LAST_MOVE_FROM_POS, LAST_MOVE_FROM_WIDTH);
-constexpr last_move_t LAST_MOVE_SET_FROM(last_move_t last_move, field_t from) {
-    return SET_VALUE(last_move, from, LAST_MOVE_FROM_POS, LAST_MOVE_FROM_MASK);
-}
-constexpr field_t LAST_MOVE_GET_FROM(last_move_t last_move) {
-    return static_cast<field_t>((last_move & LAST_MOVE_FROM_MASK) >> LAST_MOVE_FROM_POS);
-}
-
-constexpr std::size_t LAST_MOVE_TO_POS = 10;
-constexpr std::size_t LAST_MOVE_TO_WIDTH = 0b111111;
-constexpr std::size_t LAST_MOVE_TO_SIZE = 6;
-constexpr std::size_t LAST_MOVE_TO_MASK = MASK(LAST_MOVE_TO_POS, LAST_MOVE_TO_WIDTH);
-constexpr last_move_t LAST_MOVE_SET_TO(last_move_t last_move, field_t to) {
-    return SET_VALUE(last_move, to, LAST_MOVE_TO_POS, LAST_MOVE_TO_MASK);
-}
-constexpr field_t LAST_MOVE_GET_TO(last_move_t last_move) {
-    return static_cast<field_t>((last_move & LAST_MOVE_TO_MASK) >> LAST_MOVE_TO_POS);
-}
-
-using castling_rights_t = uint8_t;
-
-constexpr std::size_t BOARD_STATE_META_CASTLING_RIGHTS_POS = 16;
-constexpr std::size_t BOARD_STATE_META_CASTLING_RIGHTS_BITS = 4;
-constexpr void BOARD_STATE_META_SET_CASTLING_RIGHTS(
-    board_state_t& board, castling_rights_t rights) {
-    BOARD_STATE_META_SET_BITS(board, rights,
-        BOARD_STATE_META_CASTLING_RIGHTS_POS,
-        BOARD_STATE_META_CASTLING_RIGHTS_POS + BOARD_STATE_META_CASTLING_RIGHTS_BITS);
-}
-constexpr castling_rights_t BOARD_STATE_META_GET_CASTLING_RIGHTS(const board_state_t& board) {
-    return BOARD_STATE_META_GET_BITS<castling_rights_t>(board,
-        BOARD_STATE_META_CASTLING_RIGHTS_POS,
-        BOARD_STATE_META_CASTLING_RIGHTS_POS + BOARD_STATE_META_CASTLING_RIGHTS_BITS);
-}
-
-constexpr castling_rights_t CASTLING_RIGHTS_WHITE_SHORT_MASK = 0b0001;
-constexpr castling_rights_t CASTLING_RIGHTS_REMOVE_WHITE_SHORT(castling_rights_t rights) {
-    return rights | CASTLING_RIGHTS_WHITE_SHORT_MASK;
-}
-constexpr bool CASTLING_RIGHTS_WHITE_SHORT(castling_rights_t rights) {
-    return !(rights & CASTLING_RIGHTS_WHITE_SHORT_MASK);
-}
-
-constexpr castling_rights_t CASTLING_RIGHTS_WHITE_LONG_MASK = 0b0010;
-constexpr castling_rights_t CASTLING_RIGHTS_REMOVE_WHITE_LONG(castling_rights_t rights) {
-    return rights | CASTLING_RIGHTS_WHITE_LONG_MASK;
-}
-constexpr bool CASTLING_RIGHTS_WHITE_LONG(castling_rights_t rights) {
-    return !(rights & CASTLING_RIGHTS_WHITE_LONG_MASK);
-}
-
-constexpr castling_rights_t CASTLING_RIGHTS_BLACK_SHORT_MASK = 0b0100;
-constexpr castling_rights_t CASTLING_RIGHTS_REMOVE_BLACK_SHORT(castling_rights_t rights) {
-    return rights | CASTLING_RIGHTS_BLACK_SHORT_MASK;
-}
-constexpr bool CASTLING_RIGHTS_BLACK_SHORT(castling_rights_t rights) {
-    return !(rights & CASTLING_RIGHTS_BLACK_SHORT_MASK);
-}
-
-constexpr castling_rights_t CASTLING_RIGHTS_BLACK_LONG_MASK = 0b1000;
-constexpr castling_rights_t CASTLING_RIGHTS_REMOVE_BLACK_LONG(castling_rights_t rights) {
-    return rights | CASTLING_RIGHTS_BLACK_LONG_MASK;
-}
-constexpr bool CASTLING_RIGHTS_BLACK_LONG(castling_rights_t rights) {
-    return !(rights & CASTLING_RIGHTS_BLACK_LONG_MASK);
-}
-
 
 enum class file_t {
     A = 0, B, C, D, E, F, G, H, file_t_max
@@ -521,11 +498,11 @@ struct move_s {
 };
 
 bool check_last_move(const board_state_t& board, const move_s& move) {
-    last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
-    piece_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
-    piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
-    field_t last_move_from = LAST_MOVE_GET_FROM(last_move);
-    field_t last_move_to = LAST_MOVE_GET_TO(last_move);
+    last_move_t last_move = board_state_meta_get_last_move(board);
+    player_t last_move_player = last_move_get_player(last_move);
+    piece_t last_move_piece = last_move_get_piece(last_move);
+    field_t last_move_from = last_move_get_from(last_move);
+    field_t last_move_to = last_move_get_to(last_move);
 
     return move.player == last_move_player and
         move.piece == last_move_piece and
@@ -655,41 +632,41 @@ void update_fields_under_attack(board_state_t& board) {
 
 void update_last_move(board_state_t& board, const move_s& move) {
     last_move_t last_move = {};
-    last_move = LAST_MOVE_SET_PLAYER(last_move, move.player);
-    last_move = LAST_MOVE_SET_PIECE(last_move, move.piece);
-    last_move = LAST_MOVE_SET_FROM(last_move, move.from);
-    last_move = LAST_MOVE_SET_TO(last_move, move.to);
-    BOARD_STATE_META_SET_LAST_MOVE(board, last_move);
+    last_move = last_move_set_player(last_move, move.player);
+    last_move = last_move_set_piece(last_move, move.piece);
+    last_move = last_move_set_from(last_move, move.from);
+    last_move = last_move_set_to(last_move, move.to);
+    board_state_meta_set_last_move(board, last_move);
 }
 
 void update_castling_rights(board_state_t& board, const move_s& move) {
     if (PLAYER_WHITE == move.player) {
         if (PIECE_KING == move.piece) {
-            castling_rights_t rights = BOARD_STATE_META_GET_CASTLING_RIGHTS(board);
-            rights = CASTLING_RIGHTS_REMOVE_WHITE_LONG(rights);
-            rights = CASTLING_RIGHTS_REMOVE_WHITE_SHORT(rights);
-            BOARD_STATE_META_SET_CASTLING_RIGHTS(board, rights);
+            castling_rights_t rights = board_state_meta_get_castling_rights(board);
+            rights = castling_rights_remove_white_long(rights);
+            rights = castling_rights_remove_white_short(rights);
+            board_state_meta_set_castling_rights(board, rights);
         } else if (PIECE_ROOK == move.piece and rank_t::_1 == field_rank(move.from) and
             (file_t::A == field_file(move.from) or file_t::H == field_file(move.from))) {
-            castling_rights_t rights = BOARD_STATE_META_GET_CASTLING_RIGHTS(board);
+            castling_rights_t rights = board_state_meta_get_castling_rights(board);
             rights = (file_t::A == field_file(move.from)
-                ? CASTLING_RIGHTS_REMOVE_WHITE_LONG(rights)
-                : CASTLING_RIGHTS_REMOVE_WHITE_SHORT(rights));
-            BOARD_STATE_META_SET_CASTLING_RIGHTS(board, rights);
+                ? castling_rights_remove_white_long(rights)
+                : castling_rights_remove_white_short(rights));
+            board_state_meta_set_castling_rights(board, rights);
         }
     } else {
         if (PIECE_KING == move.piece) {
-            castling_rights_t rights = BOARD_STATE_META_GET_CASTLING_RIGHTS(board);
-            rights = CASTLING_RIGHTS_REMOVE_BLACK_LONG(rights);
-            rights = CASTLING_RIGHTS_REMOVE_BLACK_SHORT(rights);
-            BOARD_STATE_META_SET_CASTLING_RIGHTS(board, rights);
+            castling_rights_t rights = board_state_meta_get_castling_rights(board);
+            rights = castling_rights_remove_black_long(rights);
+            rights = castling_rights_remove_black_short(rights);
+            board_state_meta_set_castling_rights(board, rights);
         } else if (PIECE_ROOK == move.piece and rank_t::_8 == field_rank(move.from) and
             (file_t::A == field_file(move.from) or file_t::H == field_file(move.from))) {
-            castling_rights_t rights = BOARD_STATE_META_GET_CASTLING_RIGHTS(board);
+            castling_rights_t rights = board_state_meta_get_castling_rights(board);
             rights = (file_t::A == field_file(move.from)
-                ? CASTLING_RIGHTS_REMOVE_BLACK_LONG(rights)
-                : CASTLING_RIGHTS_REMOVE_BLACK_SHORT(rights));
-            BOARD_STATE_META_SET_CASTLING_RIGHTS(board, rights);
+                ? castling_rights_remove_black_long(rights)
+                : castling_rights_remove_black_short(rights));
+            board_state_meta_set_castling_rights(board, rights);
         }
     }
 }
@@ -1027,7 +1004,7 @@ board_state_t* fill_white_short_castle(
         PIECE_ROOK != field_get_piece(board[H1]) or
         PIECE_EMPTY != field_get_piece(board[F1]) or
         PIECE_EMPTY != field_get_piece(board[G1]) or
-        !CASTLING_RIGHTS_WHITE_SHORT(BOARD_STATE_META_GET_CASTLING_RIGHTS(board)) or
+        !castling_rights_white_short(board_state_meta_get_castling_rights(board)) or
         field_under_black_attack(board[E1]) or
         field_under_black_attack(board[F1]) or
         field_under_black_attack(board[G1]))
@@ -1047,7 +1024,7 @@ board_state_t* fill_black_short_castle(
         PIECE_ROOK != field_get_piece(board[H8]) or
         PIECE_EMPTY != field_get_piece(board[F8]) or
         PIECE_EMPTY != field_get_piece(board[G8]) or
-        !CASTLING_RIGHTS_BLACK_SHORT(BOARD_STATE_META_GET_CASTLING_RIGHTS(board)) or
+        !castling_rights_black_short(board_state_meta_get_castling_rights(board)) or
         field_under_white_attack(board[E8]) or
         field_under_white_attack(board[F8]) or
         field_under_white_attack(board[G8]))
@@ -1076,7 +1053,7 @@ board_state_t* fill_white_long_castle(
         PIECE_EMPTY != field_get_piece(board[B1]) or
         PIECE_EMPTY != field_get_piece(board[C1]) or
         PIECE_EMPTY != field_get_piece(board[D1]) or
-        !CASTLING_RIGHTS_WHITE_LONG(BOARD_STATE_META_GET_CASTLING_RIGHTS(board)) or
+        !castling_rights_white_long(board_state_meta_get_castling_rights(board)) or
         field_under_black_attack(board[C1]) or
         field_under_black_attack(board[D1]) or
         field_under_black_attack(board[E1]))
@@ -1097,7 +1074,7 @@ board_state_t* fill_black_long_castle(
         PIECE_EMPTY != field_get_piece(board[B8]) or
         PIECE_EMPTY != field_get_piece(board[C8]) or
         PIECE_EMPTY != field_get_piece(board[D8]) or
-        !CASTLING_RIGHTS_BLACK_LONG(BOARD_STATE_META_GET_CASTLING_RIGHTS(board)))
+        !castling_rights_black_long(board_state_meta_get_castling_rights(board)))
         return moves;
 
     auto& move = *moves = board;
@@ -1177,11 +1154,11 @@ board_state_t* fill_candidate_moves(
 }
 
 bool validate_board_state(const board_state_t& board) {
-    last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(board);
-    player_t last_move_player = LAST_MOVE_GET_PLAYER(last_move);
-    piece_t last_move_piece = LAST_MOVE_GET_PIECE(last_move);
-    field_t last_move_from = LAST_MOVE_GET_FROM(last_move);
-    field_t last_move_to = LAST_MOVE_GET_TO(last_move);
+    last_move_t last_move = board_state_meta_get_last_move(board);
+    player_t last_move_player = last_move_get_player(last_move);
+    piece_t last_move_piece = last_move_get_piece(last_move);
+    field_t last_move_from = last_move_get_from(last_move);
+    field_t last_move_to = last_move_get_to(last_move);
 
     if (last_move_piece != PIECE_EMPTY and
         last_move_player != field_get_player(board[last_move_to]) and
@@ -1255,7 +1232,7 @@ bool compare_simple_position(const board_state_t& lhs, const board_state_t& rhs)
             return false;
         }
     }
-    return BOARD_STATE_META_GET_CASTLING_RIGHTS(lhs) == BOARD_STATE_META_GET_CASTLING_RIGHTS(rhs);
+    return board_state_meta_get_castling_rights(lhs) == board_state_meta_get_castling_rights(rhs);
 }
 
 bool check_draw_by_threefold_repetition(const board_state_t& board, move_history_t& history) {
@@ -1270,12 +1247,12 @@ bool check_draw_by_threefold_repetition(const board_state_t& board, move_history
 
 void update_insignificant_move_cnt(std::size_t& insignificant_move_cnt,
     const board_state_t& new_position, const board_state_t& previous_position) {
-    last_move_t last_move = BOARD_STATE_META_GET_LAST_MOVE(new_position);
-    if (PIECE_PAWN == LAST_MOVE_GET_PIECE(last_move)) {
+    last_move_t last_move = board_state_meta_get_last_move(new_position);
+    if (PIECE_PAWN == last_move_get_piece(last_move)) {
         insignificant_move_cnt = 0;
     } else {
-        player_t player = LAST_MOVE_GET_PLAYER(last_move);
-        field_t target_field = LAST_MOVE_GET_TO(last_move);
+        player_t player = last_move_get_player(last_move);
+        field_t target_field = last_move_get_to(last_move);
         if (PIECE_EMPTY != field_get_piece(previous_position[target_field]) and
             player != field_get_player(previous_position[target_field])) {
             insignificant_move_cnt = 0;
@@ -1302,6 +1279,29 @@ struct null_log_t {
     null_log_t& operator<<(const T&) { return *this; }
 } null_log;
 
+constexpr board_state_t START_BOARD =
+{
+    FWR, FWN, FWB, FWQ, FWK, FWB, FWN, FWR,
+    FWP, FWP, FWP, FWP, FWP, FWP, FWP, FWP,
+    FF , FF , FF , FF , FF , FF , FF , FF ,
+    FF , FF , FF , FF , FF , FF , FF , FF ,
+    FF , FF , FF , FF , FF , FF , FF , FF ,
+    FF , FF , FF , FF , FF , FF , FF , FF ,
+    FBP, FBP, FBP, FBP, FBP, FBP, FBP, FBP,
+    FBR, FBN, FBB, FBQ, FBK, FBB, FBN, FBR
+};
+
+constexpr board_state_t EMPTY_BOARD =
+{
+    FF , FF , FF , FF , FF , FF , FF , FF ,
+    FF , FF , FF , FF , FF , FF , FF , FF ,
+    FF , FF , FF , FF , FF , FF , FF , FF ,
+    FF , FF , FF , FF , FF , FF , FF , FF ,
+    FF , FF , FF , FF , FF , FF , FF , FF ,
+    FF , FF , FF , FF , FF , FF , FF , FF ,
+    FF , FF , FF , FF , FF , FF , FF , FF ,
+    FF , FF , FF , FF , FF , FF , FF , FF
+};
 
 template <typename log_t = null_log_t>
 game_result_t play(void* memory, request_move_f white_move_fn, request_move_f black_move_fn,
