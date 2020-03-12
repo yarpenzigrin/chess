@@ -332,6 +332,43 @@ game_action_t black_random(board_state_t& board) {
     return game_action_t::MOVE;
 }
 
+game_action_t white_human(board_state_t& board) {
+    auto cm_moves_beg = player_cm_storage;
+    auto cm_moves_end = fill_candidate_moves(cm_moves_beg, board, PLAYER_WHITE);
+    if (cm_moves_beg == cm_moves_end)
+        return game_action_t::FORFEIT;
+
+    stream << "Possible moves:\n";
+    int idx = 0;
+    for (auto it = cm_moves_beg; it != cm_moves_end; ++it) {
+        stream << '[' << idx++ << "] ";
+        last_move_t move = board_state_meta_get_last_move(*it);
+        player_t move_player = last_move_get_player(move);
+        piece_t move_piece = last_move_get_piece(move);
+        field_t move_from = last_move_get_from(move);
+        field_t move_to = last_move_get_to(move);
+        gui::print_move(stream, { move_player, move_piece, move_from, move_to });
+        stream << '\n';
+    }
+    stream << "[-1] FORFEIT\n";
+    int choice = 0;
+    stream << "\nChoice [-1 .. " << idx - 1 << "]: ";
+    std::cin >> choice;
+    while (idx <= choice or choice < -1) {
+        stream << "\nWrong choice.";
+        stream << "\nChoice [-1 .. " << idx - 1 << "]: ";
+        std::cin >> choice;
+    }
+    if (choice == -1)
+    {
+        return game_action_t::FORFEIT;
+    }
+    board = cm_moves_beg[choice];
+    stream << "\n";
+    gui::print_board(stream, board);
+    return game_action_t::MOVE;
+}
+
 void announce_result(const game_result_t result) {
     stream << "Game ended with result: ";
     switch (result) {
@@ -382,6 +419,6 @@ int main() {
     player_cm_storage = player_memory.get();
     minimax_storage = minimax_memory.get();
 
-    auto result = play<stream_t>(game_memory.get(), white_minimax<4>, black_random);
+    auto result = play<stream_t>(game_memory.get(), white_human, black_minimax<5>);
     announce_result(result);
 }
