@@ -345,7 +345,7 @@ constexpr T get_property(const T field, const property_descriptor_s<T> desc)
 template <typename T, typename U>
 constexpr T set_property(const T field, const U prop, const property_descriptor_s<T> desc)
 {
-    return (field & ~desc.mask) | (prop << desc.bit_pos);
+    return (field & ~desc.mask) | (static_cast<T>(prop) << desc.bit_pos);
 }
 
 template <typename T>
@@ -442,7 +442,7 @@ constexpr void board_state_meta_set_bits(
     for (auto field_idx = start_field_idx + 1; field_idx < end_field_idx - 1; ++field_idx) {
         consume(0u, field_meta_bits_width, field_idx);
     }
-    consume(0u, (end_field_idx - 1) * field_meta_bits_width - (desc.bit_pos + desc.bit_width),
+    consume(0u, desc.bit_pos + desc.bit_width - (end_field_idx - 1) * field_meta_bits_width,
         end_field_idx - 1);
 }
 
