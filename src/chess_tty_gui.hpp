@@ -69,6 +69,15 @@ void print_field(T& stream, const field_state_t field) {
 }
 
 template <typename T>
+void print_move(T& stream, const move_s& move) {
+    auto file_str = [&](auto f){ return FILE_TO_CHAR[static_cast<int>(field_file(f))]; };
+    auto rank_str = [&](auto f){ return RANK_TO_CHAR[static_cast<int>(field_rank(f))]; };
+    stream << colored(PIECE_TO_CHAR[move.piece], move.player, move.piece)
+        << ' ' << file_str(move.from) << rank_str(move.from)
+        << " -> " << file_str(move.to) << rank_str(move.to);
+}
+
+template <typename T>
 void print_board(T& stream, const board_state_t& board) {
     stream << '\n';
 
@@ -111,11 +120,8 @@ void print_board(T& stream, const board_state_t& board) {
     }
     else
     {
-        auto file_str = [&](auto f){ return FILE_TO_CHAR[static_cast<int>(field_file(f))]; };
-        auto rank_str = [&](auto f){ return RANK_TO_CHAR[static_cast<int>(field_rank(f))]; };
-        stream << colored(PIECE_TO_CHAR[last_move_piece], last_move_player, last_move_piece)
-            << ' ' << file_str(last_move_from) << rank_str(last_move_from)
-            << " -> " << file_str(last_move_to) << rank_str(last_move_to) << '\n' << '\n';
+        print_move(stream, { last_move_player, last_move_piece, last_move_from, last_move_to });
+        stream << '\n' << '\n';
     }
 }
 
