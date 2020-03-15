@@ -1,7 +1,7 @@
 #include <memory>
 #include <algorithm>
 #include "chesstest.hpp"
-#include "chess_tty_gui.hpp"
+#include "chess/gui_tty.hpp"
 
 using namespace chess;
 

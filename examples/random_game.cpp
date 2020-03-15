@@ -2,8 +2,8 @@
 #include <memory>
 #include <iostream>
 #include <thread>
-#include "chess_gameplay.hpp"
-#include "chess_tty_gui.hpp"
+#include "chess/gameplay.hpp"
+#include "chess/gui_tty.hpp"
 
 using namespace chess;
 using namespace std::chrono_literals;

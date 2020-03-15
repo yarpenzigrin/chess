@@ -1,7 +1,7 @@
-#ifndef CHESS_TTY_GUI_HPP_
-#define CHESS_TTY_GUI_HPP_
+#ifndef CHESS_GUI_TTY_HPP_
+#define CHESS_GUI_TTY_HPP_
 
-#include "chess.hpp"
+#include "chess/core.hpp"
 
 namespace chess
 {
@@ -127,4 +127,4 @@ void print_board(T& stream, const board_state_t& board) {
 }  // namespace gui
 }  // namespace chess
 
-#endif  // CHESS_TTY_GUI_HPP_
+#endif  // CHESS_GUI_TTY_HPP_

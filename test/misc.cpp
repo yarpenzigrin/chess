@@ -1,6 +1,6 @@
 #include <memory>
-#include "chess_gameplay.hpp"
-#include "chess_tty_gui.hpp"
+#include "chess/gameplay.hpp"
+#include "chess/gui_tty.hpp"
 #include "chesstest.hpp"
 
 using namespace chess::detail;

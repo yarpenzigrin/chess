@@ -2,8 +2,8 @@
  *
  * Chess engine core header-only library.
  */
-#ifndef CHESS_HPP_
-#define CHESS_HPP_
+#ifndef CHESS_CORE_HPP_
+#define CHESS_CORE_HPP_
 
 #include <array>
 #include <cstdint>

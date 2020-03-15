@@ -5,7 +5,7 @@
 #ifndef CHESS_GAMEPLAY_HPP_
 #define CHESS_GAMEPLAY_HPP_
 
-#include "chess.hpp"
+#include "chess/core.hpp"
 
 namespace chess
 {
