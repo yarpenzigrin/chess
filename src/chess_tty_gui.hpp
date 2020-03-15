@@ -92,20 +92,19 @@ void print_board(T& stream, const board_state_t& board) {
     }
     stream << "   A   B   C   D   E   F   G   H\n\n";
     auto castling = board_state_meta_get_castling_rights(board);
-    stream << "Castling:\n"
-        << " * " << colored("WHITE -> SHORT: ", PLAYER_WHITE, PIECE_INVALID)
+    stream << "Castling: "
+        << colored("WHITE{ SHORT: ", PLAYER_WHITE, PIECE_INVALID)
         << colored(
-            castling_rights_white_short(castling) ? "YES" : "NO ", PLAYER_WHITE, PIECE_INVALID)
-        << colored(" | LONG: ", PLAYER_WHITE, PIECE_INVALID)
+            castling_rights_white_short(castling) ? "YES," : "NO,", PLAYER_WHITE, PIECE_INVALID)
+        << colored(" LONG: ", PLAYER_WHITE, PIECE_INVALID)
         << colored(
-            castling_rights_white_long(castling) ? "YES" : "NO ", PLAYER_WHITE, PIECE_INVALID)
-        << '\n'
-        << " * " << colored("BLACK -> SHORT: ", PLAYER_BLACK, PIECE_INVALID)
+            castling_rights_white_long(castling) ? "YES }" : "NO }", PLAYER_WHITE, PIECE_INVALID)
+        << colored(" BLACK{ SHORT: ", PLAYER_BLACK, PIECE_INVALID)
         << colored(
-            castling_rights_black_short(castling) ? "YES" : "NO ", PLAYER_BLACK, PIECE_INVALID)
-        << colored(" | LONG: ", PLAYER_BLACK, PIECE_INVALID)
+            castling_rights_black_short(castling) ? "YES," : "NO,", PLAYER_BLACK, PIECE_INVALID)
+        << colored(" LONG: ", PLAYER_BLACK, PIECE_INVALID)
         << colored(
-            castling_rights_black_long(castling) ? "YES" : "NO ", PLAYER_BLACK, PIECE_INVALID)
+            castling_rights_black_long(castling) ? "YES }" : "NO }", PLAYER_BLACK, PIECE_INVALID)
         << '\n';
 
     last_move_t last_move = board_state_meta_get_last_move(board);

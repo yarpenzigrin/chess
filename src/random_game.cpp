@@ -339,24 +339,42 @@ game_action_t white_human(board_state_t& board) {
         return game_action_t::FORFEIT;
 
     stream << "Possible moves:\n";
-    int idx = 0;
-    for (auto it = cm_moves_beg; it != cm_moves_end; ++it) {
-        stream << '[' << idx++ << "] ";
-        last_move_t move = board_state_meta_get_last_move(*it);
+    auto print_choice = [&](const auto idx)
+    {
+        stream << '[' << idx << "] ";
+        last_move_t move = board_state_meta_get_last_move(cm_moves_beg[idx]);
         player_t move_player = last_move_get_player(move);
         piece_t move_piece = last_move_get_piece(move);
         field_t move_from = last_move_get_from(move);
         field_t move_to = last_move_get_to(move);
         gui::print_move(stream, { move_player, move_piece, move_from, move_to });
+    };
+    const int moves_cnt = cm_moves_end - cm_moves_beg;
+    const int ROWS_CNT = moves_cnt < 35 ? 5 : 6;
+    const char* separator = moves_cnt < 35 ? "\t\t" : "\t| ";
+    const int columns_cnt = moves_cnt / ROWS_CNT + 1;
+
+    for (int row = 0; row != ROWS_CNT; ++row)
+    {
+        for (int col = 0; col != columns_cnt; ++col)
+        {
+            auto idx = row + col * ROWS_CNT;
+            if (idx < moves_cnt)
+            {
+                print_choice(idx);
+                stream << separator;
+            }
+        }
         stream << '\n';
     }
+
     stream << "[-1] FORFEIT\n";
     int choice = 0;
-    stream << "\nChoice [-1 .. " << idx - 1 << "]: ";
+    stream << "\nChoice [-1 .. " << moves_cnt - 1 << "]: ";
     std::cin >> choice;
-    while (idx <= choice or choice < -1) {
+    while (moves_cnt <= choice or choice < -1) {
         stream << "\nWrong choice.";
-        stream << "\nChoice [-1 .. " << idx - 1 << "]: ";
+        stream << "\nChoice [-1 .. " << moves_cnt - 1 << "]: ";
         std::cin >> choice;
     }
     if (choice == -1)
@@ -419,6 +437,6 @@ int main() {
     player_cm_storage = player_memory.get();
     minimax_storage = minimax_memory.get();
 
-    auto result = play<stream_t>(game_memory.get(), white_human, black_minimax<5>);
+    auto result = play<stream_t>(game_memory.get(), white_minimax<5>, black_minimax<5>);
     announce_result(result);
 }
