@@ -305,9 +305,38 @@ bool compare_simple_position(const board_state_t& lhs, const board_state_t& rhs)
 
 /*  @} */ // core-api
 
+/** @defgroup datastructures-support Core data structures support
+ *  @{
+ */
+
+}  // namespace chess
+
+namespace std
+{
+
+template <>
+struct hash<chess::board_state_t>
+{
+    // Fowler-Noll-Vo hash function
+    size_t operator()(const chess::board_state_t& board) const {
+        size_t result = 2166136261;
+        for (const auto field : board) {
+            result = (result * 16777619) ^ field;
+        }
+        return result;
+    }
+};
+
+}  // namespace std
+
+
+/*  @} */ // datastructures-support
+
 /** @defgroup private-impl Private implementation
  *  @{
  */
+namespace chess
+{
 namespace
 {
 
@@ -662,25 +691,17 @@ board_state_t* add_white_pawn_move_up(
         return moves;
 
     if (rank_t::_8 == field_rank(target_field)) {
-        auto& move1 = *moves;
-        move1 = board;
-        moves = apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
-        move1[target_field] = field_set_piece(move1[target_field], PIECE_KNIGHT);
+        *moves = board;
+        moves = apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_KNIGHT, field, target_field });
 
-        auto& move2 = *moves;
-        move2 = board;
-        moves = apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
-        move2[target_field] = field_set_piece(move2[target_field], PIECE_BISHOP);
+        *moves = board;
+        moves = apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_BISHOP, field, target_field });
 
-        auto& move3 = *moves;
-        move3 = board;
-        moves = apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
-        move3[target_field] = field_set_piece(move3[target_field], PIECE_ROOK);
+        *moves = board;
+        moves = apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_ROOK, field, target_field });
 
-        auto& move4 = *moves;
-        move4 = board;
-        moves = apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field });
-        move4[target_field] = field_set_piece(move4[target_field], PIECE_QUEEN);
+        *moves = board;
+        moves = apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_QUEEN, field, target_field });
         return moves;
     } else {
         *moves = board;
@@ -774,25 +795,17 @@ board_state_t* add_black_pawn_move_down(
         return moves;
 
     if (rank_t::_1 == field_rank(target_field)) {
-        auto& move1 = *moves;
-        move1 = board;
-        moves = apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
-        move1[target_field] = field_set_piece(move1[target_field], PIECE_KNIGHT);
+        *moves = board;
+        moves = apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_KNIGHT, field, target_field });
 
-        auto& move2 = *moves;
-        move2 = board;
-        moves = apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
-        move2[target_field] = field_set_piece(move2[target_field], PIECE_BISHOP);
+        *moves = board;
+        moves = apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_BISHOP, field, target_field });
 
-        auto& move3 = *moves;
-        move3 = board;
-        moves = apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
-        move3[target_field] = field_set_piece(move3[target_field], PIECE_ROOK);
+        *moves = board;
+        moves = apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_ROOK, field, target_field });
 
-        auto& move4 = *moves;
-        move4 = board;
-        moves = apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_PAWN, field, target_field });
-        move4[target_field] = field_set_piece(move4[target_field], PIECE_QUEEN);
+        *moves = board;
+        moves = apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_QUEEN, field, target_field });
         return moves + 4;
     } else {
         *moves = board;
