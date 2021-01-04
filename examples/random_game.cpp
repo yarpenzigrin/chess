@@ -2,6 +2,7 @@
 #include <memory>
 #include <iostream>
 #include <thread>
+#include <unordered_map>
 #include "chess/gameplay.hpp"
 #include "chess/gui_tty.hpp"
 
@@ -16,19 +17,35 @@ board_state_t* player_cm_storage;
 board_state_t* evaluation_storage;
 std::size_t move_cnt = 0;
 auto timeout = 50ms;
+chess::gui::layout_t layout = chess::gui::game_layout();
 
-struct stdout_logger_t {
+struct game_status_t {
     template <typename T>
-    stdout_logger_t& operator<<(const T& stuff) {
-        std::cout << stuff;
+    game_status_t& operator<<(T&& stuff) {
+        std::stringstream ss;
+        ss << std::forward<T>(stuff);
+        auto s = ss.str();
+        if (std::end(s) == std::find(std::begin(s), std::end(s), '\n')) {
+            chess::gui::frame_stream(&layout.frames[3]) << s;
+        } else {
+            chess::gui::frame_stream(&layout.frames[3]) << s;
+            // chess::gui::reset_frame_after_display(layout.frames[3]);
+        }
+        chess::gui::reset_frame_after_display(layout.frames[3]);
+        return *this;
+    }
+
+    game_status_t& operator<<(const chess::gui::layout_t::frame_t::color_code color) {
+        chess::gui::frame_stream(&layout.frames[3]) << color;
         return *this;
     }
 };
 
+game_status_t game_status;
+
 int gen_random_num(int max_num, int min_num = 0) {
     static std::random_device rd;
     static std::mt19937 gen(rd());
-    
     std::uniform_int_distribution<> dis(min_num, max_num);
     return dis(gen);
 }
@@ -37,32 +54,47 @@ std::size_t intpow(const std::size_t num, const std::size_t exp) {
     return exp ? num * pow(num, exp - 1) : 1;
 }
 
-using stream_t = stdout_logger_t;
-// using stream_t = chess::null_log_t;
-auto stream = stream_t{};
-
 using score_t = int;
 static constexpr score_t MAX_SCORE = 100000;
 static constexpr score_t MIN_SCORE = -100000;
 
+std::random_device score_rd;
+std::mt19937 score_gen(score_rd());
+std::uniform_int_distribution<> score_distr(-2, 2);
+
 score_t score_position(const board_state_t& board) {
-    constexpr score_t PAWN_SCORE = 1;
     constexpr score_t KNIGHT_SCORE = 3;
     constexpr score_t BISHOP_SCORE = 3;
     constexpr score_t ROOK_SCORE = 5;
     constexpr score_t QUEEN_SCORE = 9;
 
-    score_t total_score = 0;
-    for (const auto field : board) {
+    auto score_pawn = [](const auto field) -> double {
+        constexpr score_t PAWN_SCORE = 1;
+        score_t sign = (PLAYER_WHITE == field_get_player(field) ? 1 : -1 );
+        return sign * PAWN_SCORE * (field_get_player(field) == PLAYER_WHITE
+            ? static_cast<float>(field_rank(field)) / static_cast<float>(rank_t::_8)
+            : static_cast<float>(
+                static_cast<int>(rank_t::_8) - static_cast<int>(field_rank(field)))
+                / static_cast<float>(rank_t::_8));
+    };
+
+    float total_score = 0;
+    for (uint8_t field_idx = static_cast<uint8_t>(field_t::BEGIN);
+         field_idx < static_cast<uint8_t>(field_t::END);
+         ++field_idx) {
+        const auto field = board[field_idx];
         score_t sign = (PLAYER_WHITE == field_get_player(field) ? 1 : -1 );
         switch (field_get_piece(field)) {
-            case PIECE_PAWN: total_score += PAWN_SCORE * sign; break;
+            case PIECE_PAWN: total_score += score_pawn(static_cast<field_t>(field_idx)); break;
             case PIECE_KNIGHT: total_score += KNIGHT_SCORE * sign; break;
             case PIECE_BISHOP: total_score += BISHOP_SCORE * sign; break;
             case PIECE_ROOK: total_score += ROOK_SCORE * sign; break;
             case PIECE_QUEEN: total_score += QUEEN_SCORE * sign; break;
         }
     }
+    total_score -= is_king_under_attack(board, PLAYER_WHITE) * 10;
+    total_score += is_king_under_attack(board, PLAYER_BLACK) * 10;
+    total_score += score_distr(score_gen);
     return total_score;
 }
 
@@ -80,6 +112,42 @@ void print_tab(const int depth) {
     }
 }
 
+bool compare_score(const score_t score, const score_t best_score) {
+    return score > best_score;
+}
+
+struct cache_entry_t {
+    int depth = 0;
+    score_t score = 0;
+    score_t alpha = MIN_SCORE;
+    score_t beta = MAX_SCORE;
+};
+
+std::unordered_map<board_state_t, cache_entry_t> cache;
+int cache_hits = 0;
+
+struct cache_entry_2_t {
+    std::vector<board_state_t> candidates;
+};
+
+std::unordered_map<board_state_t, cache_entry_2_t> cache_2;
+
+board_state_t* gen_moves(
+    board_state_t* moves_beg, const board_state_t& board, const player_t player) {
+    if (cache_2.size() > 20'000'000) {
+        cache_2.clear();
+    }
+    auto& entry = cache_2[board];
+    if (entry.candidates.size()) {
+        ++cache_hits;
+        return std::copy(std::begin(entry.candidates), std::end(entry.candidates), moves_beg);
+    }
+    auto moves_end = fill_candidate_moves(moves_beg, board, opponent(player));
+    entry.candidates.reserve(moves_end - moves_beg);
+    std::copy(moves_beg, moves_end, std::back_inserter(entry.candidates));
+    return moves_end;
+}
+
 evaluation_s evaluate_position_min_AB(
     const board_state_t* moves_beg, board_state_t* moves_end, const player_t player,
     const int depth, const score_t beta);
@@ -90,13 +158,13 @@ evaluation_s evaluate_position_max_AB(
     auto score_f =
         [depth, player](const board_state_t& board, board_state_t* moves_beg, const score_t beta) {
         if (depth > 0) {
-            auto moves_end = fill_candidate_moves(moves_beg, board, opponent(player));
+            auto moves_end = gen_moves(moves_beg, board, opponent(player));
 
             if (moves_beg == moves_end) {
                 if (is_king_under_attack(board, player))
-                    return -100;
+                    return -1000;
                 else if (is_king_under_attack(board, opponent(player)))
-                    return 100;
+                    return 1000;
                 else
                     return 0;
             }
@@ -106,6 +174,18 @@ evaluation_s evaluate_position_max_AB(
         } else {
             return score_position(board);
         }
+    };
+    auto cached_score_f =
+        [&](const board_state_t& board, board_state_t* moves_beg, const score_t beta) {
+        auto& entry = cache[board];
+        if (entry.depth >= depth and entry.beta < beta) {
+            ++cache_hits;
+            return entry.score;
+        }
+        entry.depth = depth;
+        entry.alpha = MIN_SCORE;
+        entry.beta = beta;
+        return entry.score = score_f(board, moves_beg, beta);
     };
 
     std::size_t moves_cnt = moves_end - moves_beg;
@@ -122,7 +202,7 @@ evaluation_s evaluate_position_max_AB(
             minimax_stream << "MAX: pruning on alpha = " << alpha << " at depth = " << depth << '\n';
             return { idx, score };
         }
-        if (score > best_score) {
+        if (compare_score(score, best_score)) {
             best_score = score;
             best_move_idx = idx;
         }
@@ -138,12 +218,12 @@ evaluation_s evaluate_position_min_AB(
     auto score_f =
         [depth, player](const board_state_t& board, board_state_t* moves_beg, const score_t alpha) {
         if (depth > 0) {
-            auto moves_end = fill_candidate_moves(moves_beg, board, opponent(player));
+            auto moves_end = gen_moves(moves_beg, board, opponent(player));
             if (moves_beg == moves_end) {
                 if (is_king_under_attack(board, player))
-                    return 100;
+                    return 1000;
                 else if (is_king_under_attack(board, opponent(player)))
-                    return -100;
+                    return -1000;
                 else
                     return 0;
             }
@@ -153,6 +233,18 @@ evaluation_s evaluate_position_min_AB(
         } else {
             return score_position(board);
         }
+    };
+    auto cached_score_f =
+        [&](const board_state_t& board, board_state_t* moves_beg, const score_t alpha) {
+        auto& entry = cache[board];
+        if (entry.depth >= depth and entry.alpha > alpha) {
+            ++cache_hits;
+            return entry.score;
+        }
+        entry.depth = depth;
+        entry.alpha = alpha;
+        entry.beta = MAX_SCORE;
+        return entry.score = score_f(board, moves_beg, alpha);
     };
 
     std::size_t moves_cnt = moves_end - moves_beg;
@@ -169,7 +261,7 @@ evaluation_s evaluate_position_min_AB(
             minimax_stream << "MIN: pruning on beta = " << beta << " at depth = " << depth <<  '\n';
             return { idx, score };
         }
-        if (score < best_score) {
+        if (compare_score(best_score, score)) {
             best_score = score;
             best_move_idx = idx;
         }
@@ -268,6 +360,8 @@ board_state_t* minimax_storage = nullptr;
 
 board_state_t minimax(
     const board_state_t& board, const player_t player, const int depth) {
+    cache_2.clear();
+    cache_hits = 0;
     auto moves_beg = minimax_storage;
     auto moves_end = fill_candidate_moves(moves_beg, board, player);
 
@@ -282,19 +376,21 @@ board_state_t minimax(
 
 template <std::size_t DEPTH>
 game_action_t white_minimax(board_state_t& board) {
-    board = minimax(board, PLAYER_WHITE, DEPTH);
+    game_status << "Cache size: " << cache_2.size() << " | hits: " << cache_hits;
+    chess::gui::print_board(layout, board);
+    chess::gui::display(layout);
 
-    stream << "After whites's move " << ++move_cnt << ":\n";
-    gui::print_board(stream, board);
+    board = minimax(board, PLAYER_WHITE, DEPTH);
     return game_action_t::MOVE;
 }
 
 template <std::size_t DEPTH>
 game_action_t black_minimax(board_state_t& board) {
-    board = minimax(board, PLAYER_BLACK, DEPTH);
+    game_status << "Cache size: " << cache_2.size() << " | hits: " << cache_hits;
+    chess::gui::print_board(layout, board);
+    chess::gui::display(layout);
 
-    stream << "After black's move " << ++move_cnt << ":\n";
-    gui::print_board(stream, board);
+    board = minimax(board, PLAYER_BLACK, DEPTH);
     return game_action_t::MOVE;
 }
 
@@ -307,10 +403,9 @@ game_action_t white_random(board_state_t& board) {
     auto cm_moves_cnt = cm_moves_end - cm_moves_beg;
     auto chosen_number = gen_random_num(cm_moves_cnt - 1);
 
-    stream << "After whites's move " << ++move_cnt << " (chosen: " << chosen_number << " / "
-        << cm_moves_cnt << " ):\n";
     board = cm_moves_beg[chosen_number];
-    gui::print_board(stream, board);
+    chess::gui::print_board(layout, board);
+    chess::gui::display(layout);
     std::this_thread::sleep_for(timeout);
     return game_action_t::MOVE;
 }
@@ -324,10 +419,9 @@ game_action_t black_random(board_state_t& board) {
     auto cm_moves_cnt = cm_moves_end - cm_moves_beg;
     auto chosen_number = gen_random_num(cm_moves_cnt - 1);
 
-    stream << "After black's move " << ++move_cnt << " (chosen: " << chosen_number << " / "
-        << cm_moves_cnt << " ):\n";
     board = cm_moves_beg[chosen_number];
-    gui::print_board(stream, board);
+    chess::gui::print_board(layout, board);
+    chess::gui::display(layout);
     std::this_thread::sleep_for(timeout);
     return game_action_t::MOVE;
 }
@@ -338,43 +432,52 @@ game_action_t white_human(board_state_t& board) {
     if (cm_moves_beg == cm_moves_end)
         return game_action_t::FORFEIT;
 
-    stream << "Possible moves:\n";
+    chess::gui::reset_frame(layout.frames[4]);
+    auto choice_stream = chess::gui::frame_stream(&layout.frames[4]);
+    choice_stream << "Possible moves:\n";
     auto print_choice = [&](const auto idx)
     {
-        stream << '[' << idx << "] ";
+        choice_stream << '[' << idx << "] ";
+        if (idx < 10) {
+            choice_stream << ' ';
+        }
         last_move_t move = board_state_meta_get_last_move(cm_moves_beg[idx]);
         player_t move_player = last_move_get_player(move);
         piece_t move_piece = last_move_get_piece(move);
         field_t move_from = last_move_get_from(move);
         field_t move_to = last_move_get_to(move);
-        gui::print_move(stream, { move_player, move_piece, move_from, move_to });
+        chess::gui::print_move(choice_stream, { move_player, move_piece, move_from, move_to });
     };
     const int moves_cnt = cm_moves_end - cm_moves_beg;
-    const int ROWS_CNT = moves_cnt < 35 ? 5 : 6;
-    const char* separator = moves_cnt < 35 ? "\t\t" : "\t| ";
-    const int columns_cnt = moves_cnt / ROWS_CNT + 1;
+    const char* separator = " | ";
+    const int COLUMNS_CNT = 3;
+    const int rows_cnt = (moves_cnt - 1) / COLUMNS_CNT + 1;
 
-    for (int row = 0; row != ROWS_CNT; ++row)
+    for (int row = 0; row != rows_cnt; ++row)
     {
-        for (int col = 0; col != columns_cnt; ++col)
+        for (int col = 0; col != COLUMNS_CNT; ++col)
         {
-            auto idx = row + col * ROWS_CNT;
+            auto idx = row + col * rows_cnt;
             if (idx < moves_cnt)
             {
                 print_choice(idx);
-                stream << separator;
+                if (col < COLUMNS_CNT - 1) {
+                    choice_stream << separator;
+                }
             }
         }
-        stream << '\n';
+        choice_stream << '\n';
     }
 
-    stream << "[-1] FORFEIT\n";
+    choice_stream << "[-1] FORFEIT\n";
+    chess::gui::print_board(layout, board);
+    chess::gui::display(layout);
+
     int choice = 0;
-    stream << "\nChoice [-1 .. " << moves_cnt - 1 << "]: ";
+    std::cout << "> Choice [-1 .. " << moves_cnt - 1 << "]: ";
     std::cin >> choice;
     while (moves_cnt <= choice or choice < -1) {
-        stream << "\nWrong choice.";
-        stream << "\nChoice [-1 .. " << moves_cnt - 1 << "]: ";
+        std::cout << "\nWrong choice.\n> Choice [-1 .. " << moves_cnt - 1 << "]: ";
         std::cin >> choice;
     }
     if (choice == -1)
@@ -382,61 +485,68 @@ game_action_t white_human(board_state_t& board) {
         return game_action_t::FORFEIT;
     }
     board = cm_moves_beg[choice];
-    stream << "\n";
-    gui::print_board(stream, board);
+    std::cout << "\n";
+    chess::gui::print_board(layout, board);
+    chess::gui::display(layout);
     return game_action_t::MOVE;
 }
 
 void announce_result(const game_result_t result) {
-    stream << "Game ended with result: ";
+    game_status << "Game ended with result: ";
     switch (result) {
         case game_result_t::WHITE_WON_FORFEIT: {
-            stream << "WHITE_WON_FORFEIT";
+            game_status << "WHITE_WON_FORFEIT\n";
             break;
         }
         case game_result_t::WHITE_WON_CHECKMATE: {
-            stream << "WHITE_WON_CHECKMATE";
+            game_status << "WHITE_WON_CHECKMATE\n";
             break;
         }
         case game_result_t::BLACK_WON_FORFEIT: {
-            stream << "BLACK_WON_FORFEIT";
+            game_status << "BLACK_WON_FORFEIT\n";
             break;
         }
         case game_result_t::BLACK_WON_CHECKMATE: {
-            stream << "BLACK_WON_CHECKMATE";
+            game_status << "BLACK_WON_CHECKMATE\n";
             break;
         }
         case game_result_t::DRAW_STALEMATE: {
-            stream << "DRAW_STALEMATE";
+            game_status << "DRAW_STALEMATE\n";
             break;
         }
         case game_result_t::DRAW_INSUFFICIENT_MATERIAL: {
-            stream << "DRAW_INSUFFICIENT_MATERIAL";
+            game_status << "DRAW_INSUFFICIENT_MATERIAL\n";
             break;
         }
         case game_result_t::DRAW_REPETITION: {
-            stream << "DRAW_REPETITION";
+            game_status << "DRAW_REPETITION\n";
             break;
         }
         case game_result_t::DRAW_50_MOVE_RULE: {
-            stream << "DRAW_50_MOVE_RULE";
+            game_status << "DRAW_50_MOVE_RULE\n";
             break;
         }
         case game_result_t::ERROR: {
-            stream << "ERROR";
+            game_status << "ERROR\n";
             break;
         }
     }
-    stream << '\n';
 }
 
 int main() {
+    chess::gui::display(layout);
+    std::this_thread::sleep_for(500ms);
+
     auto game_memory = prepare_game_memory();
     auto player_memory = prepare_game_memory();
     auto minimax_memory = prepare_game_memory(intpow(64, 4));
     player_cm_storage = player_memory.get();
     minimax_storage = minimax_memory.get();
 
-    auto result = play<stream_t>(game_memory.get(), white_minimax<5>, black_minimax<5>);
+    auto board = chess::START_BOARD;
+    auto result = play(
+        game_memory.get(), white_minimax<5>, black_minimax<6>, board, game_status);
     announce_result(result);
+    chess::gui::print_board(layout, board);
+    chess::gui::display(layout);
 }
