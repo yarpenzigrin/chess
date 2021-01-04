@@ -66,7 +66,7 @@ struct null_log_t {
  */
 template <typename log_t = null_log_t>
 game_result_t play(void* memory, request_move_f white_move_fn, request_move_f black_move_fn,
-    board_state_t board = START_BOARD);
+    board_state_t& board, log_t log = {});
 
 /*  @} */ // gameplay-api
 
@@ -228,8 +228,7 @@ void update_insignificant_move_cnt(std::size_t& insignificant_move_cnt,
 
 template <typename log_t = null_log_t>
 game_result_t play(void* memory, request_move_f white_move_fn, request_move_f black_move_fn,
-    board_state_t board) {
-    log_t log;
+    board_state_t& board, log_t log) {
     if (nullptr == memory or nullptr == white_move_fn or nullptr == black_move_fn) {
         log << "Game ended with error.";
         return game_result_t::ERROR;
