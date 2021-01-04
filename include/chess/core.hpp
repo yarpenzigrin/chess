@@ -684,6 +684,16 @@ board_state_t* apply_move_if_valid(board_state_t* moves, const move_s& move) {
     return moves;
 }
 
+board_state_t* promote_pawn_if_able(
+    board_state_t* moves, const move_s& move, const piece_t promote_to) {
+    const auto temp_moves = moves;
+    moves = apply_move_if_valid(moves, move);
+    if (moves != temp_moves) {
+        (*temp_moves)[move.to] = field_set_piece((*temp_moves)[move.to], promote_to);
+    }
+    return moves;
+}
+
 board_state_t* add_white_pawn_move_up(
     board_state_t* moves, const board_state_t& board, const field_t field) {
     field_t target_field = field_up(field);
@@ -692,16 +702,20 @@ board_state_t* add_white_pawn_move_up(
 
     if (rank_t::_8 == field_rank(target_field)) {
         *moves = board;
-        moves = apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_KNIGHT, field, target_field });
+        moves = promote_pawn_if_able(
+            moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field }, PIECE_KNIGHT);
 
         *moves = board;
-        moves = apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_BISHOP, field, target_field });
+        moves = promote_pawn_if_able(
+            moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field }, PIECE_BISHOP);
 
         *moves = board;
-        moves = apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_ROOK, field, target_field });
+        moves = promote_pawn_if_able(
+            moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field }, PIECE_ROOK);
 
         *moves = board;
-        moves = apply_move_if_valid(moves, { PLAYER_WHITE, PIECE_QUEEN, field, target_field });
+        moves = promote_pawn_if_able(
+            moves, { PLAYER_WHITE, PIECE_PAWN, field, target_field }, PIECE_QUEEN);
         return moves;
     } else {
         *moves = board;
@@ -796,16 +810,20 @@ board_state_t* add_black_pawn_move_down(
 
     if (rank_t::_1 == field_rank(target_field)) {
         *moves = board;
-        moves = apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_KNIGHT, field, target_field });
+        moves = promote_pawn_if_able(
+            moves, { PLAYER_BLACK, PIECE_PAWN, field, target_field }, PIECE_KNIGHT);
 
         *moves = board;
-        moves = apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_BISHOP, field, target_field });
+        moves = promote_pawn_if_able(
+            moves, { PLAYER_BLACK, PIECE_PAWN, field, target_field }, PIECE_BISHOP);
 
         *moves = board;
-        moves = apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_ROOK, field, target_field });
+        moves = promote_pawn_if_able(
+            moves, { PLAYER_BLACK, PIECE_PAWN, field, target_field }, PIECE_ROOK);
 
         *moves = board;
-        moves = apply_move_if_valid(moves, { PLAYER_BLACK, PIECE_QUEEN, field, target_field });
+        moves = promote_pawn_if_able(
+            moves, { PLAYER_BLACK, PIECE_PAWN, field, target_field }, PIECE_QUEEN);
         return moves + 4;
     } else {
         *moves = board;

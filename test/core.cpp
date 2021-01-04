@@ -1,17 +1,13 @@
 #include <memory>
 #include <algorithm>
+#include "chess/core.hpp"
 #include "chesstest.hpp"
-#include "chess/gui_tty.hpp"
 
 using namespace chess;
 
-void draw_board(const board_state_t& board) {
-    gui::print_board(test_output, board);
-}
-
 static void temp_print_c_moves(const board_state_t* c_moves_beg, const board_state_t* c_moves_end) {
-    for (auto it = c_moves_beg; it != c_moves_end; ++it)
-        draw_board(*it);
+    // for (auto it = c_moves_beg; it != c_moves_end; ++it)
+    //     draw_board(*it);
 
     test_output << c_moves_end - c_moves_beg << " candidate moves.\n";
 }
@@ -20,7 +16,7 @@ board_state_t prepare_board(std::function<void(board_state_t&)> setup_fn) {
     auto board = chess::EMPTY_BOARD;
     setup_fn(board);
     update_fields_under_attack(board);
-    draw_board(board);
+    // draw_board(board);
     return board;
 }
 
@@ -124,7 +120,7 @@ const board_state_t* find_candidate_move(
             bool success = check_last_move(board, last_move);
             if (success) {
                 test_output << "\nFound requested candidate move:\n\n";
-                draw_board(board);
+                // draw_board(board);
             }
             return success;
         });

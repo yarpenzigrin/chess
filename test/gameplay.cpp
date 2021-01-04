@@ -6,18 +6,18 @@
 
 using namespace chess;
 
-void draw_board(const board_state_t& board) {
-    gui::print_board(test_output, board);
-}
+// void draw_board(const board_state_t& board) {
+//     gui::print_board(test_output, board);
+// }
 
-void print_candidate_moves(const board_state_t& board) {
-    auto c_moves_beg = std::make_unique<board_state_t[]>(32);
-    auto last_player = last_move_get_player(board_state_meta_get_last_move(board));
-    auto next_player = (PLAYER_WHITE == last_player ? PLAYER_BLACK : PLAYER_WHITE);
-    auto c_moves_end = fill_candidate_moves(c_moves_beg.get(), board, next_player);
-    for (auto it = c_moves_beg.get(); it != c_moves_end; ++it)
-        draw_board(*it);
-}
+// void print_candidate_moves(const board_state_t& board) {
+//     auto c_moves_beg = std::make_unique<board_state_t[]>(32);
+//     auto last_player = last_move_get_player(board_state_meta_get_last_move(board));
+//     auto next_player = (PLAYER_WHITE == last_player ? PLAYER_BLACK : PLAYER_WHITE);
+//     auto c_moves_end = fill_candidate_moves(c_moves_beg.get(), board, next_player);
+//     for (auto it = c_moves_beg.get(); it != c_moves_end; ++it)
+//         draw_board(*it);
+// }
 
 game_action_t dummy_move_req(board_state_t& board) {
     return game_action_t::FORFEIT;
@@ -42,7 +42,8 @@ game_result_t do_play(
 }
 
 TEST(Gameplay_Play_ReturnsErrorIfMemoryIsNull) {
-    ASSERT(game_result_t::ERROR == play(nullptr, dummy_move_req, dummy_move_req));
+    board_state_t board = START_BOARD;
+    ASSERT(game_result_t::ERROR == play(nullptr, dummy_move_req, dummy_move_req, board));
 }
 
 TEST(Gameplay_Play_ReturnsErrorIfAnyRequestFunctionsAreNull) {
@@ -94,7 +95,7 @@ game_action_t white_to_play(board_state_t& board) {
     auto board_ptr = apply_move_if_valid(&board, white_move_seq()[white_move_idx++]);
     ASSERT(board_ptr != &board);
     test_output << "After white's move:\n";
-    draw_board(board);
+    // draw_board(board);
     // test_output << "Black's candidate moves:\n";
     // print_candidate_moves(board);
     return game_action_t::MOVE;
@@ -107,7 +108,7 @@ game_action_t black_to_play(board_state_t& board) {
     auto board_ptr = apply_move_if_valid(&board, black_move_seq()[black_move_idx++]);
     ASSERT(board_ptr != &board);
     test_output << "After black's move:\n";
-    draw_board(board);
+    // draw_board(board);
     // test_output << "Whites's candidate moves:\n";
     // print_candidate_moves(board);
     return game_action_t::MOVE;
@@ -122,7 +123,7 @@ board_state_t prepare_board(std::function<void(board_state_t&)> setup_fn) {
     auto board = chess::EMPTY_BOARD;
     setup_fn(board);
     update_fields_under_attack(board);
-    draw_board(board);
+    // draw_board(board);
     return board;
 }
 
