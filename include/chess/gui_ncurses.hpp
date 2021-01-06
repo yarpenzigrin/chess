@@ -15,13 +15,36 @@ const wchar_t* PIECE_TO_EMOJI[2][8] = {
 
 constexpr int COLOR_PAIR_DESC[2][2] = { { 1, 2 }, { 3, 4 } };
 constexpr int INFO_COLOR_PAIR = 5;
-constexpr int SQUARE_WIDTH = 5;
-constexpr int SQUARE_HEIGHT = 3;
-constexpr bool CHESSBOARD_BORDER = true;
-constexpr int CHESSBOARD_OFFSET_X = 1;
-constexpr int CHESSBOARD_OFFSET_Y = 1;
-constexpr int RANK_DESC_WIDTH = 3;
-constexpr int FILE_DESC_HEIGHT = 2;
+
+struct preset_1 {
+    static constexpr int SQUARE_WIDTH = 5;
+    static constexpr int SQUARE_HEIGHT = 3;
+    static constexpr bool CHESSBOARD_BORDER = true;
+    static constexpr int CHESSBOARD_OFFSET_X = 1;
+    static constexpr int CHESSBOARD_OFFSET_Y = 1;
+    static constexpr int RANK_DESC_WIDTH = 3;
+    static constexpr int FILE_DESC_HEIGHT = 2;
+};
+
+struct preset_2 {
+    static constexpr int SQUARE_WIDTH = 3;
+    static constexpr int SQUARE_HEIGHT = 1;
+    static constexpr bool CHESSBOARD_BORDER = true;
+    static constexpr int CHESSBOARD_OFFSET_X = 1;
+    static constexpr int CHESSBOARD_OFFSET_Y = 1;
+    static constexpr int RANK_DESC_WIDTH = 1;
+    static constexpr int FILE_DESC_HEIGHT = 1;
+};
+
+using DEFAULTS = preset_2;
+
+constexpr int SQUARE_WIDTH = DEFAULTS::SQUARE_WIDTH;
+constexpr int SQUARE_HEIGHT = DEFAULTS::SQUARE_HEIGHT;
+constexpr bool CHESSBOARD_BORDER = DEFAULTS::CHESSBOARD_BORDER;
+constexpr int CHESSBOARD_OFFSET_X = DEFAULTS::CHESSBOARD_OFFSET_X;
+constexpr int CHESSBOARD_OFFSET_Y = DEFAULTS::CHESSBOARD_OFFSET_Y;
+constexpr int RANK_DESC_WIDTH = DEFAULTS::RANK_DESC_WIDTH;
+constexpr int FILE_DESC_HEIGHT = DEFAULTS::FILE_DESC_HEIGHT;
 
 }  // namespace
 
