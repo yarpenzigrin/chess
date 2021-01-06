@@ -188,12 +188,12 @@ layout_t game_layout() {
     static winsize terminal_size;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &terminal_size);
 
-    if (terminal_size.ws_row < 30 or terminal_size.ws_col < 120)
-    {
-        std::cerr << "Terminal size " << terminal_size.ws_row << '/' << terminal_size.ws_col
-            << " is too small. At least 30/100 is required.";
-        std::exit(1);
-    }
+    // if (terminal_size.ws_row < 30 or terminal_size.ws_col < 120)
+    // {
+    //     std::cerr << "Terminal size " << terminal_size.ws_row << '/' << terminal_size.ws_col
+    //         << " is too small. At least 30/100 is required.";
+    //     std::exit(1);
+    // }
     layout_t layout;
     constexpr auto BUFFER_SIZE = 30u*1024u;
     layout.buffer = std::make_unique<char[]>(BUFFER_SIZE);

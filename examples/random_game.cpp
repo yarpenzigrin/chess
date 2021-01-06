@@ -5,9 +5,12 @@
 #include <unordered_map>
 #include "chess/gameplay.hpp"
 #include "chess/gui_tty.hpp"
+#include "chess/gui_ncurses.hpp"
 
-using namespace chess;
 using namespace std::chrono_literals;
+
+namespace chess {
+namespace example {
 
 std::unique_ptr<board_state_t[]> prepare_game_memory(const std::size_t size = 254) {
     return std::make_unique<board_state_t[]>(size);
@@ -17,31 +20,31 @@ board_state_t* player_cm_storage;
 board_state_t* evaluation_storage;
 std::size_t move_cnt = 0;
 auto timeout = 50ms;
-chess::gui::layout_t layout = chess::gui::game_layout();
+chess::ncurses::layout_t layout;
 
-struct game_status_t {
-    template <typename T>
-    game_status_t& operator<<(T&& stuff) {
-        std::stringstream ss;
-        ss << std::forward<T>(stuff);
-        auto s = ss.str();
-        if (std::end(s) == std::find(std::begin(s), std::end(s), '\n')) {
-            chess::gui::frame_stream(&layout.frames[3]) << s;
-        } else {
-            chess::gui::frame_stream(&layout.frames[3]) << s;
-            // chess::gui::reset_frame_after_display(layout.frames[3]);
-        }
-        chess::gui::reset_frame_after_display(layout.frames[3]);
-        return *this;
-    }
+// struct game_status_t {
+//     template <typename T>
+//     game_status_t& operator<<(T&& stuff) {
+//         std::stringstream ss;
+//         ss << std::forward<T>(stuff);
+//         auto s = ss.str();
+//         if (std::end(s) == std::find(std::begin(s), std::end(s), '\n')) {
+//             chess::gui::frame_stream(&layout.frames[3]) << s;
+//         } else {
+//             chess::gui::frame_stream(&layout.frames[3]) << s;
+//             // chess::gui::reset_frame_after_display(layout.frames[3]);
+//         }
+//         chess::gui::reset_frame_after_display(layout.frames[3]);
+//         return *this;
+//     }
 
-    game_status_t& operator<<(const chess::gui::layout_t::frame_t::color_code color) {
-        chess::gui::frame_stream(&layout.frames[3]) << color;
-        return *this;
-    }
-};
+//     game_status_t& operator<<(const chess::gui::layout_t::frame_t::color_code color) {
+//         chess::gui::frame_stream(&layout.frames[3]) << color;
+//         return *this;
+//     }
+// };
 
-game_status_t game_status;
+// game_status_t game_status;
 
 int gen_random_num(int max_num, int min_num = 0) {
     static std::random_device rd;
@@ -376,21 +379,25 @@ board_state_t minimax(
 
 template <std::size_t DEPTH>
 game_action_t white_minimax(board_state_t& board) {
-    game_status << "Cache size: " << cache_2.size() << " | hits: " << cache_hits;
-    chess::gui::print_board(layout, board);
-    chess::gui::display(layout);
+    // game_status << "Cache size: " << cache_2.size() << " | hits: " << cache_hits;
+    chess::ncurses::update_board(layout, board);
+    chess::ncurses::update(layout);
 
     board = minimax(board, PLAYER_WHITE, DEPTH);
+    std::this_thread::sleep_for(500ms);
+
     return game_action_t::MOVE;
 }
 
 template <std::size_t DEPTH>
 game_action_t black_minimax(board_state_t& board) {
-    game_status << "Cache size: " << cache_2.size() << " | hits: " << cache_hits;
-    chess::gui::print_board(layout, board);
-    chess::gui::display(layout);
+    // game_status << "Cache size: " << cache_2.size() << " | hits: " << cache_hits;
+    chess::ncurses::update_board(layout, board);
+    chess::ncurses::update(layout);
 
     board = minimax(board, PLAYER_BLACK, DEPTH);
+    std::this_thread::sleep_for(500ms);
+    
     return game_action_t::MOVE;
 }
 
@@ -404,8 +411,8 @@ game_action_t white_random(board_state_t& board) {
     auto chosen_number = gen_random_num(cm_moves_cnt - 1);
 
     board = cm_moves_beg[chosen_number];
-    chess::gui::print_board(layout, board);
-    chess::gui::display(layout);
+    chess::ncurses::update_board(layout, board);
+    chess::ncurses::update(layout);
     std::this_thread::sleep_for(timeout);
     return game_action_t::MOVE;
 }
@@ -420,133 +427,169 @@ game_action_t black_random(board_state_t& board) {
     auto chosen_number = gen_random_num(cm_moves_cnt - 1);
 
     board = cm_moves_beg[chosen_number];
-    chess::gui::print_board(layout, board);
-    chess::gui::display(layout);
+    chess::ncurses::update_board(layout, board);
+    chess::ncurses::update(layout);
     std::this_thread::sleep_for(timeout);
     return game_action_t::MOVE;
 }
 
-game_action_t white_human(board_state_t& board) {
-    auto cm_moves_beg = player_cm_storage;
-    auto cm_moves_end = fill_candidate_moves(cm_moves_beg, board, PLAYER_WHITE);
-    if (cm_moves_beg == cm_moves_end)
-        return game_action_t::FORFEIT;
+// game_action_t white_human(board_state_t& board) {
+//     auto cm_moves_beg = player_cm_storage;
+//     auto cm_moves_end = fill_candidate_moves(cm_moves_beg, board, PLAYER_WHITE);
+//     if (cm_moves_beg == cm_moves_end)
+//         return game_action_t::FORFEIT;
 
-    chess::gui::reset_frame(layout.frames[4]);
-    auto choice_stream = chess::gui::frame_stream(&layout.frames[4]);
-    choice_stream << "Possible moves:\n";
-    auto print_choice = [&](const auto idx)
-    {
-        choice_stream << '[' << idx << "] ";
-        if (idx < 10) {
-            choice_stream << ' ';
-        }
-        last_move_t move = board_state_meta_get_last_move(cm_moves_beg[idx]);
-        player_t move_player = last_move_get_player(move);
-        piece_t move_piece = last_move_get_piece(move);
-        field_t move_from = last_move_get_from(move);
-        field_t move_to = last_move_get_to(move);
-        chess::gui::print_move(choice_stream, { move_player, move_piece, move_from, move_to });
-    };
-    const int moves_cnt = cm_moves_end - cm_moves_beg;
-    const char* separator = " | ";
-    const int COLUMNS_CNT = 3;
-    const int rows_cnt = (moves_cnt - 1) / COLUMNS_CNT + 1;
+//     chess::gui::reset_frame(layout.frames[4]);
+//     auto choice_stream = chess::gui::frame_stream(&layout.frames[4]);
+//     choice_stream << "Possible moves:\n";
+//     auto print_choice = [&](const auto idx)
+//     {
+//         choice_stream << '[' << idx << "] ";
+//         if (idx < 10) {
+//             choice_stream << ' ';
+//         }
+//         last_move_t move = board_state_meta_get_last_move(cm_moves_beg[idx]);
+//         player_t move_player = last_move_get_player(move);
+//         piece_t move_piece = last_move_get_piece(move);
+//         field_t move_from = last_move_get_from(move);
+//         field_t move_to = last_move_get_to(move);
+//         chess::gui::print_move(choice_stream, { move_player, move_piece, move_from, move_to });
+//     };
+//     const int moves_cnt = cm_moves_end - cm_moves_beg;
+//     const char* separator = " | ";
+//     const int COLUMNS_CNT = 3;
+//     const int rows_cnt = (moves_cnt - 1) / COLUMNS_CNT + 1;
 
-    for (int row = 0; row != rows_cnt; ++row)
-    {
-        for (int col = 0; col != COLUMNS_CNT; ++col)
-        {
-            auto idx = row + col * rows_cnt;
-            if (idx < moves_cnt)
-            {
-                print_choice(idx);
-                if (col < COLUMNS_CNT - 1) {
-                    choice_stream << separator;
-                }
-            }
-        }
-        choice_stream << '\n';
-    }
+//     for (int row = 0; row != rows_cnt; ++row)
+//     {
+//         for (int col = 0; col != COLUMNS_CNT; ++col)
+//         {
+//             auto idx = row + col * rows_cnt;
+//             if (idx < moves_cnt)
+//             {
+//                 print_choice(idx);
+//                 if (col < COLUMNS_CNT - 1) {
+//                     choice_stream << separator;
+//                 }
+//             }
+//         }
+//         choice_stream << '\n';
+//     }
 
-    choice_stream << "[-1] FORFEIT\n";
-    chess::gui::print_board(layout, board);
-    chess::gui::display(layout);
+//     choice_stream << "[-1] FORFEIT\n";
+//     chess::gui::print_board(layout, board);
+//     chess::gui::display(layout);
 
-    int choice = 0;
-    std::cout << "> Choice [-1 .. " << moves_cnt - 1 << "]: ";
-    std::cin >> choice;
-    while (moves_cnt <= choice or choice < -1) {
-        std::cout << "\nWrong choice.\n> Choice [-1 .. " << moves_cnt - 1 << "]: ";
-        std::cin >> choice;
-    }
-    if (choice == -1)
-    {
-        return game_action_t::FORFEIT;
-    }
-    board = cm_moves_beg[choice];
-    std::cout << "\n";
-    chess::gui::print_board(layout, board);
-    chess::gui::display(layout);
-    return game_action_t::MOVE;
-}
+//     int choice = 0;
+//     std::cout << "> Choice [-1 .. " << moves_cnt - 1 << "]: ";
+//     std::cin >> choice;
+//     while (moves_cnt <= choice or choice < -1) {
+//         std::cout << "\nWrong choice.\n> Choice [-1 .. " << moves_cnt - 1 << "]: ";
+//         std::cin >> choice;
+//     }
+//     if (choice == -1)
+//     {
+//         return game_action_t::FORFEIT;
+//     }
+//     board = cm_moves_beg[choice];
+//     std::cout << "\n";
+//     chess::gui::print_board(layout, board);
+//     chess::gui::display(layout);
+//     return game_action_t::MOVE;
+// }
 
-void announce_result(const game_result_t result) {
-    game_status << "Game ended with result: ";
-    switch (result) {
-        case game_result_t::WHITE_WON_FORFEIT: {
-            game_status << "WHITE_WON_FORFEIT\n";
-            break;
-        }
-        case game_result_t::WHITE_WON_CHECKMATE: {
-            game_status << "WHITE_WON_CHECKMATE\n";
-            break;
-        }
-        case game_result_t::BLACK_WON_FORFEIT: {
-            game_status << "BLACK_WON_FORFEIT\n";
-            break;
-        }
-        case game_result_t::BLACK_WON_CHECKMATE: {
-            game_status << "BLACK_WON_CHECKMATE\n";
-            break;
-        }
-        case game_result_t::DRAW_STALEMATE: {
-            game_status << "DRAW_STALEMATE\n";
-            break;
-        }
-        case game_result_t::DRAW_INSUFFICIENT_MATERIAL: {
-            game_status << "DRAW_INSUFFICIENT_MATERIAL\n";
-            break;
-        }
-        case game_result_t::DRAW_REPETITION: {
-            game_status << "DRAW_REPETITION\n";
-            break;
-        }
-        case game_result_t::DRAW_50_MOVE_RULE: {
-            game_status << "DRAW_50_MOVE_RULE\n";
-            break;
-        }
-        case game_result_t::ERROR: {
-            game_status << "ERROR\n";
-            break;
-        }
-    }
-}
+// void announce_result(const game_result_t result) {
+//     game_status << "Game ended with result: ";
+//     switch (result) {
+//         case game_result_t::WHITE_WON_FORFEIT: {
+//             game_status << "WHITE_WON_FORFEIT\n";
+//             break;
+//         }
+//         case game_result_t::WHITE_WON_CHECKMATE: {
+//             game_status << "WHITE_WON_CHECKMATE\n";
+//             break;
+//         }
+//         case game_result_t::BLACK_WON_FORFEIT: {
+//             game_status << "BLACK_WON_FORFEIT\n";
+//             break;
+//         }
+//         case game_result_t::BLACK_WON_CHECKMATE: {
+//             game_status << "BLACK_WON_CHECKMATE\n";
+//             break;
+//         }
+//         case game_result_t::DRAW_STALEMATE: {
+//             game_status << "DRAW_STALEMATE\n";
+//             break;
+//         }
+//         case game_result_t::DRAW_INSUFFICIENT_MATERIAL: {
+//             game_status << "DRAW_INSUFFICIENT_MATERIAL\n";
+//             break;
+//         }
+//         case game_result_t::DRAW_REPETITION: {
+//             game_status << "DRAW_REPETITION\n";
+//             break;
+//         }
+//         case game_result_t::DRAW_50_MOVE_RULE: {
+//             game_status << "DRAW_50_MOVE_RULE\n";
+//             break;
+//         }
+//         case game_result_t::ERROR: {
+//             game_status << "ERROR\n";
+//             break;
+//         }
+//     }
+// }
+
+}  // namespace example
+}  // namespace chess
 
 int main() {
-    chess::gui::display(layout);
+    // chess::gui::display(chess::example::layout);
+    // std::this_thread::sleep_for(500ms);
+
+    // auto game_memory = chess::example::prepare_game_memory();
+    // auto player_memory = chess::example::prepare_game_memory();
+    // auto minimax_memory = chess::example::prepare_game_memory(chess::example::intpow(64, 4));
+    // chess::example::player_cm_storage = player_memory.get();
+    // chess::example::minimax_storage = minimax_memory.get();
+
+    // auto board = chess::START_BOARD;
+    // auto result = chess::play(
+    //     game_memory.get(),
+    //     chess::example::white_minimax<5>,
+    //     chess::example::black_minimax<6>,
+    //     board,
+    //     chess::example::game_status
+    // );
+    // chess::example::announce_result(result);
+    // chess::gui::print_board(chess::example::layout, board);
+    // chess::gui::display(chess::example::layout);
+
+    chess::example::layout = chess::ncurses::init();
+    auto board = chess::START_BOARD;
+
+    auto game_memory = chess::example::prepare_game_memory();
+    auto player_memory = chess::example::prepare_game_memory();
+    auto minimax_memory = chess::example::prepare_game_memory(chess::example::intpow(64, 4));
+    chess::example::player_cm_storage = player_memory.get();
+    chess::example::minimax_storage = minimax_memory.get();
+
+    chess::ncurses::update_board(chess::example::layout, board);
+    chess::ncurses::update(chess::example::layout);
     std::this_thread::sleep_for(500ms);
 
-    auto game_memory = prepare_game_memory();
-    auto player_memory = prepare_game_memory();
-    auto minimax_memory = prepare_game_memory(intpow(64, 4));
-    player_cm_storage = player_memory.get();
-    minimax_storage = minimax_memory.get();
+    auto result = chess::play(
+        game_memory.get(),
+        chess::example::white_minimax<4>,
+        chess::example::black_minimax<4>,
+        board
+    );
 
-    auto board = chess::START_BOARD;
-    auto result = play(
-        game_memory.get(), white_minimax<5>, black_minimax<6>, board, game_status);
-    announce_result(result);
-    chess::gui::print_board(layout, board);
-    chess::gui::display(layout);
+    chess::ncurses::update_board(chess::example::layout, board);
+    chess::ncurses::update(chess::example::layout);
+
+    char c;
+    std::cin >> c;
+
+    chess::ncurses::finish(chess::example::layout);
 }
