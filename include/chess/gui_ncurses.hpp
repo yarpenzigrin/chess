@@ -2,6 +2,7 @@
 #define CHESS_GUI_NCURSES_HPP_
 
 #include <ncurses.h>
+#include <array>
 
 namespace chess {
 namespace ncurses {
@@ -12,9 +13,12 @@ const wchar_t* PIECE_TO_EMOJI[2][8] = {
     { L" ", L"♟", L"♞", L"♝", L"♜", L"♛", L"♚", L"!" },
     { L" ", L"♙", L"♘", L"♗", L"♖", L"♕", L"♔", L"!" }
 };
+constexpr std::array<char, 8> RANK_TO_CHAR = { '1', '2', '3', '4', '5', '6', '7', '8' };
+constexpr std::array<char, 8> FILE_TO_CHAR = { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H' };
 
 constexpr int COLOR_PAIR_DESC[2][2] = { { 1, 2 }, { 3, 4 } };
 constexpr int INFO_COLOR_PAIR = 5;
+constexpr int INV_COLOR_PAIR = 6;
 
 struct preset_1 {
     static constexpr int SQUARE_WIDTH = 5;
@@ -24,6 +28,11 @@ struct preset_1 {
     static constexpr int CHESSBOARD_OFFSET_Y = 1;
     static constexpr int RANK_DESC_WIDTH = 3;
     static constexpr int FILE_DESC_HEIGHT = 2;
+    static constexpr int GAME_STATUS_OFFSET_Y = 3;
+    static constexpr int GAME_STATUS_HEIGHT = 3;
+    static constexpr int LAST_MOVE_WIDTH = 30;
+    static constexpr int LAST_MOVE_HEIGHT = 5;
+    static constexpr int LAST_MOVE_OFFSET_X = 2;
 };
 
 struct preset_2 {
@@ -34,6 +43,11 @@ struct preset_2 {
     static constexpr int CHESSBOARD_OFFSET_Y = 1;
     static constexpr int RANK_DESC_WIDTH = 1;
     static constexpr int FILE_DESC_HEIGHT = 1;
+    static constexpr int GAME_STATUS_OFFSET_Y = 2;
+    static constexpr int GAME_STATUS_HEIGHT = 3;
+    static constexpr int LAST_MOVE_WIDTH = 30;
+    static constexpr int LAST_MOVE_HEIGHT = 5;
+    static constexpr int LAST_MOVE_OFFSET_X = 2;
 };
 
 using DEFAULTS = preset_2;
@@ -45,7 +59,11 @@ constexpr int CHESSBOARD_OFFSET_X = DEFAULTS::CHESSBOARD_OFFSET_X;
 constexpr int CHESSBOARD_OFFSET_Y = DEFAULTS::CHESSBOARD_OFFSET_Y;
 constexpr int RANK_DESC_WIDTH = DEFAULTS::RANK_DESC_WIDTH;
 constexpr int FILE_DESC_HEIGHT = DEFAULTS::FILE_DESC_HEIGHT;
-
+constexpr int GAME_STATUS_OFFSET_Y = DEFAULTS::GAME_STATUS_OFFSET_Y;
+constexpr int GAME_STATUS_HEIGHT = DEFAULTS::GAME_STATUS_HEIGHT;
+constexpr int LAST_MOVE_WIDTH = DEFAULTS::LAST_MOVE_WIDTH;
+constexpr int LAST_MOVE_HEIGHT = DEFAULTS::LAST_MOVE_HEIGHT;
+constexpr int LAST_MOVE_OFFSET_X = DEFAULTS::LAST_MOVE_OFFSET_X;
 }  // namespace
 
 struct board_rect_t {
@@ -55,8 +73,20 @@ struct board_rect_t {
     WINDOW* file_desc_win = nullptr;
 };
 
+struct game_status_rect_t {
+    WINDOW* game_status_win = nullptr;
+    WINDOW* game_status_border_win = nullptr;
+};
+
+struct last_move_rect_t {
+    WINDOW* last_move_win = nullptr;
+    WINDOW* last_move_border_win = nullptr;
+};
+
 struct layout_t {
     board_rect_t board_rect;
+    game_status_rect_t game_status_rect;
+    last_move_rect_t last_move_rect;
 };
 
 namespace {
@@ -119,6 +149,40 @@ void init_board_rect(layout_t& layout) {
     init_file_desc(layout.board_rect.file_desc_win);
 }
 
+void init_game_status_rect(layout_t& layout) {
+    auto game_status_h = GAME_STATUS_HEIGHT;
+    auto game_status_w = SQUARE_WIDTH * 8 + 2 * CHESSBOARD_BORDER + RANK_DESC_WIDTH - 2;
+    auto game_status_y = CHESSBOARD_OFFSET_Y + SQUARE_HEIGHT * 8 + 2 * CHESSBOARD_BORDER +
+        FILE_DESC_HEIGHT + GAME_STATUS_OFFSET_Y;
+    auto game_status_x = CHESSBOARD_OFFSET_X + 1;
+    layout.game_status_rect.game_status_win = newwin(
+        game_status_h, game_status_w, game_status_y, game_status_x);
+
+    auto border_h = game_status_h + 2;
+    auto border_w = game_status_w + 2;
+    auto border_y = game_status_y - 1;
+    auto border_x = game_status_x - 1;
+    layout.game_status_rect.game_status_border_win = newwin(border_h, border_w, border_y, border_x);
+    wborder(layout.game_status_rect.game_status_border_win, 0, 0, 0, 0, 0, 0, 0, 0);
+}
+
+void init_last_move_rect(layout_t& layout) {
+    auto last_move_h = LAST_MOVE_HEIGHT - 2;
+    auto last_move_w = LAST_MOVE_WIDTH - 2;
+    auto last_move_y = CHESSBOARD_OFFSET_Y + 1;
+    auto last_move_x = CHESSBOARD_OFFSET_X + RANK_DESC_WIDTH + CHESSBOARD_BORDER * 2 +
+        SQUARE_WIDTH * 8 + LAST_MOVE_OFFSET_X;
+    layout.last_move_rect.last_move_win = newwin(
+        last_move_h, last_move_w, last_move_y, last_move_x);
+
+    auto border_h = last_move_h + 2;
+    auto border_w = last_move_w + 2;
+    auto border_y = last_move_y - 1;
+    auto border_x = last_move_x - 1;
+    layout.last_move_rect.last_move_border_win = newwin(border_h, border_w, border_y, border_x);
+    wborder(layout.last_move_rect.last_move_border_win, 0, 0, 0, 0, 0, 0, 0, 0);
+}
+
 void update_board_win(WINDOW* w, const board_state_t& board) {
     auto active_pair = INFO_COLOR_PAIR;
     auto update_color = [&, char_count = 0](const auto player) mutable {
@@ -167,6 +231,41 @@ void update_board_win(WINDOW* w, const board_state_t& board) {
     }
 }
 
+void update_last_move_win(WINDOW* w, const board_state_t& board) {
+    last_move_t last_move = board_state_meta_get_last_move(board);
+    player_t last_move_player = last_move_get_player(last_move);
+    piece_t last_move_piece = last_move_get_piece(last_move);
+    field_t last_move_from = last_move_get_from(last_move);
+    field_t last_move_to = last_move_get_to(last_move);
+
+    werase(w);
+    wmove(w, 0, 0);
+    waddstr(w, " Last move:\n");
+
+    auto file_ch = [&](auto f){ return FILE_TO_CHAR[static_cast<int>(field_file(f))]; };
+    auto rank_ch = [&](auto f){ return RANK_TO_CHAR[static_cast<int>(field_rank(f))]; };
+    if (PIECE_EMPTY == last_move_piece or PIECE_INVALID == last_move_piece) {
+        waddstr(w, " <none>\n");
+    } else {
+        waddch(w, ' ');
+        wattron(w, A_BOLD | COLOR_PAIR(INV_COLOR_PAIR));
+        waddwstr(w, PIECE_TO_EMOJI[last_move_player][last_move_piece]);
+        wattroff(w, A_BOLD | COLOR_PAIR(INV_COLOR_PAIR));
+        waddch(w, ' ');
+        waddch(w, file_ch(last_move_from));
+        waddch(w, rank_ch(last_move_from));
+        waddstr(w, " -> ");
+        waddch(w, file_ch(last_move_to));
+        waddch(w, rank_ch(last_move_to));
+        waddch(w, '\n');
+    }
+}
+
+void update_game_status_win(WINDOW* w, const std::string& str) {
+    werase(w);
+    waddstr(w, str.c_str());
+}
+
 }  // namespace
 
 layout_t init() {
@@ -179,25 +278,35 @@ layout_t init() {
     init_pair(COLOR_PAIR_DESC[0][PLAYER_WHITE], COLOR_BLACK, 6);
     init_pair(COLOR_PAIR_DESC[1][PLAYER_BLACK], COLOR_BLACK, 7);
     init_pair(COLOR_PAIR_DESC[1][PLAYER_WHITE], COLOR_BLACK, 7);
-    init_pair(5, COLOR_WHITE, COLOR_BLACK);
+    init_pair(INFO_COLOR_PAIR, COLOR_WHITE, COLOR_BLACK);
+    init_pair(INV_COLOR_PAIR, COLOR_BLACK, COLOR_WHITE);
 
     layout_t layout;
     init_board_rect(layout);
+    init_game_status_rect(layout);
+    init_last_move_rect(layout);
 
     wrefresh(layout.board_rect.rank_desc_win);
     wrefresh(layout.board_rect.file_desc_win);
     wrefresh(layout.board_rect.board_border_win);
+    wrefresh(layout.game_status_rect.game_status_border_win);
+    wrefresh(layout.last_move_rect.last_move_border_win);
     return layout;
 }
 
 void update_board(const layout_t& layout, const board_state_t& board) {
-    wrefresh(layout.board_rect.board_win);
     update_board_win(layout.board_rect.board_win, board);
-    wrefresh(layout.board_rect.board_win);
+    update_last_move_win(layout.last_move_rect.last_move_win, board);
+}
+
+void update_game_status(const layout_t& layout, const std::string& str) {
+    update_game_status_win(layout.game_status_rect.game_status_win, str);
 }
 
 void update(const layout_t& layout) {
-    // wrefresh(layout.board_rect.board_win);
+    wrefresh(layout.board_rect.board_win);
+    wrefresh(layout.game_status_rect.game_status_win);
+    wrefresh(layout.last_move_rect.last_move_win);
 }
 
 void finish(layout_t& layout) {
@@ -205,6 +314,10 @@ void finish(layout_t& layout) {
     delwin(layout.board_rect.rank_desc_win);
     delwin(layout.board_rect.file_desc_win);
     delwin(layout.board_rect.board_border_win);
+    delwin(layout.game_status_rect.game_status_win);
+    delwin(layout.game_status_rect.game_status_border_win);
+    delwin(layout.last_move_rect.last_move_win);
+    delwin(layout.last_move_rect.last_move_border_win);
     endwin();
 }
 

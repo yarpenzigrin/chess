@@ -22,29 +22,25 @@ std::size_t move_cnt = 0;
 auto timeout = 50ms;
 chess::ncurses::layout_t layout;
 
-// struct game_status_t {
-//     template <typename T>
-//     game_status_t& operator<<(T&& stuff) {
-//         std::stringstream ss;
-//         ss << std::forward<T>(stuff);
-//         auto s = ss.str();
-//         if (std::end(s) == std::find(std::begin(s), std::end(s), '\n')) {
-//             chess::gui::frame_stream(&layout.frames[3]) << s;
-//         } else {
-//             chess::gui::frame_stream(&layout.frames[3]) << s;
-//             // chess::gui::reset_frame_after_display(layout.frames[3]);
-//         }
-//         chess::gui::reset_frame_after_display(layout.frames[3]);
-//         return *this;
-//     }
+struct game_status_t {
+    static struct flush_t {} flush;
+    std::stringstream* ss;
 
-//     game_status_t& operator<<(const chess::gui::layout_t::frame_t::color_code color) {
-//         chess::gui::frame_stream(&layout.frames[3]) << color;
-//         return *this;
-//     }
-// };
+    template <typename T>
+    game_status_t& operator<<(T&& stuff) {
+        (*ss) << std::forward<T>(stuff);
+        return *this;
+    }
 
-// game_status_t game_status;
+    game_status_t& operator<<(flush_t) {
+        chess::ncurses::update_game_status(layout, ss->str());
+        ss->str("");
+        return *this;
+    }
+};
+
+std::stringstream game_status_buffer;
+game_status_t game_status{ &game_status_buffer };
 
 int gen_random_num(int max_num, int min_num = 0) {
     static std::random_device rd;
@@ -66,13 +62,13 @@ std::mt19937 score_gen(score_rd());
 std::uniform_int_distribution<> score_distr(-2, 2);
 
 score_t score_position(const board_state_t& board) {
-    constexpr score_t KNIGHT_SCORE = 3;
-    constexpr score_t BISHOP_SCORE = 3;
-    constexpr score_t ROOK_SCORE = 5;
-    constexpr score_t QUEEN_SCORE = 9;
+    constexpr score_t KNIGHT_SCORE = 30;
+    constexpr score_t BISHOP_SCORE = 30;
+    constexpr score_t ROOK_SCORE = 50;
+    constexpr score_t QUEEN_SCORE = 90;
 
     auto score_pawn = [](const auto field) -> double {
-        constexpr score_t PAWN_SCORE = 1;
+        constexpr score_t PAWN_SCORE = 10;
         score_t sign = (PLAYER_WHITE == field_get_player(field) ? 1 : -1 );
         return sign * PAWN_SCORE * (field_get_player(field) == PLAYER_WHITE
             ? static_cast<float>(field_rank(field)) / static_cast<float>(rank_t::_8)
@@ -95,8 +91,8 @@ score_t score_position(const board_state_t& board) {
             case PIECE_QUEEN: total_score += QUEEN_SCORE * sign; break;
         }
     }
-    total_score -= is_king_under_attack(board, PLAYER_WHITE) * 10;
-    total_score += is_king_under_attack(board, PLAYER_BLACK) * 10;
+    total_score -= is_king_under_attack(board, PLAYER_WHITE) * 100;
+    total_score += is_king_under_attack(board, PLAYER_BLACK) * 100;
     total_score += score_distr(score_gen);
     return total_score;
 }
@@ -379,25 +375,27 @@ board_state_t minimax(
 
 template <std::size_t DEPTH>
 game_action_t white_minimax(board_state_t& board) {
-    // game_status << "Cache size: " << cache_2.size() << " | hits: " << cache_hits;
+    game_status << "Cache size: " << cache_2.size() << " | hits: " << cache_hits
+        << game_status_t::flush;
     chess::ncurses::update_board(layout, board);
     chess::ncurses::update(layout);
 
     board = minimax(board, PLAYER_WHITE, DEPTH);
-    std::this_thread::sleep_for(500ms);
+    // std::this_thread::sleep_for(500ms);
 
     return game_action_t::MOVE;
 }
 
 template <std::size_t DEPTH>
 game_action_t black_minimax(board_state_t& board) {
-    // game_status << "Cache size: " << cache_2.size() << " | hits: " << cache_hits;
+    game_status << "Cache size: " << cache_2.size() << " | hits: " << cache_hits
+        << game_status_t::flush;
     chess::ncurses::update_board(layout, board);
     chess::ncurses::update(layout);
 
     board = minimax(board, PLAYER_BLACK, DEPTH);
-    std::this_thread::sleep_for(500ms);
-    
+    // std::this_thread::sleep_for(500ms);
+
     return game_action_t::MOVE;
 }
 
@@ -498,47 +496,48 @@ game_action_t black_random(board_state_t& board) {
 //     return game_action_t::MOVE;
 // }
 
-// void announce_result(const game_result_t result) {
-//     game_status << "Game ended with result: ";
-//     switch (result) {
-//         case game_result_t::WHITE_WON_FORFEIT: {
-//             game_status << "WHITE_WON_FORFEIT\n";
-//             break;
-//         }
-//         case game_result_t::WHITE_WON_CHECKMATE: {
-//             game_status << "WHITE_WON_CHECKMATE\n";
-//             break;
-//         }
-//         case game_result_t::BLACK_WON_FORFEIT: {
-//             game_status << "BLACK_WON_FORFEIT\n";
-//             break;
-//         }
-//         case game_result_t::BLACK_WON_CHECKMATE: {
-//             game_status << "BLACK_WON_CHECKMATE\n";
-//             break;
-//         }
-//         case game_result_t::DRAW_STALEMATE: {
-//             game_status << "DRAW_STALEMATE\n";
-//             break;
-//         }
-//         case game_result_t::DRAW_INSUFFICIENT_MATERIAL: {
-//             game_status << "DRAW_INSUFFICIENT_MATERIAL\n";
-//             break;
-//         }
-//         case game_result_t::DRAW_REPETITION: {
-//             game_status << "DRAW_REPETITION\n";
-//             break;
-//         }
-//         case game_result_t::DRAW_50_MOVE_RULE: {
-//             game_status << "DRAW_50_MOVE_RULE\n";
-//             break;
-//         }
-//         case game_result_t::ERROR: {
-//             game_status << "ERROR\n";
-//             break;
-//         }
-//     }
-// }
+void announce_result(const game_result_t result) {
+    game_status << "Game ended with result:\n";
+    switch (result) {
+        case game_result_t::WHITE_WON_FORFEIT: {
+            game_status << "WHITE_WON_FORFEIT\n";
+            break;
+        }
+        case game_result_t::WHITE_WON_CHECKMATE: {
+            game_status << "WHITE_WON_CHECKMATE\n";
+            break;
+        }
+        case game_result_t::BLACK_WON_FORFEIT: {
+            game_status << "BLACK_WON_FORFEIT\n";
+            break;
+        }
+        case game_result_t::BLACK_WON_CHECKMATE: {
+            game_status << "BLACK_WON_CHECKMATE\n";
+            break;
+        }
+        case game_result_t::DRAW_STALEMATE: {
+            game_status << "DRAW_STALEMATE\n";
+            break;
+        }
+        case game_result_t::DRAW_INSUFFICIENT_MATERIAL: {
+            game_status << "DRAW_INSUFFICIENT_MATERIAL\n";
+            break;
+        }
+        case game_result_t::DRAW_REPETITION: {
+            game_status << "DRAW_REPETITION\n";
+            break;
+        }
+        case game_result_t::DRAW_50_MOVE_RULE: {
+            game_status << "DRAW_50_MOVE_RULE\n";
+            break;
+        }
+        case game_result_t::ERROR: {
+            game_status << "ERROR\n";
+            break;
+        }
+    }
+    game_status << game_status_t::flush;
+}
 
 }  // namespace example
 }  // namespace chess
@@ -561,7 +560,6 @@ int main() {
     //     board,
     //     chess::example::game_status
     // );
-    // chess::example::announce_result(result);
     // chess::gui::print_board(chess::example::layout, board);
     // chess::gui::display(chess::example::layout);
 
@@ -582,9 +580,11 @@ int main() {
         game_memory.get(),
         chess::example::white_minimax<4>,
         chess::example::black_minimax<4>,
-        board
+        board,
+        chess::example::game_status
     );
 
+    chess::example::announce_result(result);
     chess::ncurses::update_board(chess::example::layout, board);
     chess::ncurses::update(chess::example::layout);
 
