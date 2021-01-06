@@ -8,6 +8,7 @@ target_compile_options(chess INTERFACE
     -O3
     -ggdb3
 )
+target_link_libraries(chess INTERFACE ncurses)
 
 add_executable(example_game examples/random_game.cpp)
 target_link_libraries(example_game chess)
@@ -31,5 +32,7 @@ add_custom_target(game
 
 add_custom_target(tests
     DEPENDS core_tests gameplay_tests misc_tests
-    COMMAND ./core_tests ; ./gameplay_tests ; ./misc_tests
+    COMMAND ./core_tests
+    COMMAND ./gameplay_tests
+    COMMAND ./misc_tests
 )
