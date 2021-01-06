@@ -33,6 +33,9 @@ struct preset_1 {
     static constexpr int LAST_MOVE_WIDTH = 30;
     static constexpr int LAST_MOVE_HEIGHT = 5;
     static constexpr int LAST_MOVE_OFFSET_X = 2;
+    static constexpr int CASTLING_WIDTH = 30;
+    static constexpr int CASTLING_HEIGHT = 5;
+    static constexpr int CASTLING_OFFSET_X = 2;
 };
 
 struct preset_2 {
@@ -48,9 +51,12 @@ struct preset_2 {
     static constexpr int LAST_MOVE_WIDTH = 30;
     static constexpr int LAST_MOVE_HEIGHT = 5;
     static constexpr int LAST_MOVE_OFFSET_X = 2;
+    static constexpr int CASTLING_WIDTH = 30;
+    static constexpr int CASTLING_HEIGHT = 5;
+    static constexpr int CASTLING_OFFSET_X = 2;
 };
 
-using DEFAULTS = preset_2;
+using DEFAULTS = preset_1;
 
 constexpr int SQUARE_WIDTH = DEFAULTS::SQUARE_WIDTH;
 constexpr int SQUARE_HEIGHT = DEFAULTS::SQUARE_HEIGHT;
@@ -64,6 +70,9 @@ constexpr int GAME_STATUS_HEIGHT = DEFAULTS::GAME_STATUS_HEIGHT;
 constexpr int LAST_MOVE_WIDTH = DEFAULTS::LAST_MOVE_WIDTH;
 constexpr int LAST_MOVE_HEIGHT = DEFAULTS::LAST_MOVE_HEIGHT;
 constexpr int LAST_MOVE_OFFSET_X = DEFAULTS::LAST_MOVE_OFFSET_X;
+constexpr int CASTLING_WIDTH = DEFAULTS::CASTLING_WIDTH;
+constexpr int CASTLING_HEIGHT = DEFAULTS::CASTLING_HEIGHT;
+constexpr int CASTLING_OFFSET_X = DEFAULTS::CASTLING_OFFSET_X;
 }  // namespace
 
 struct board_rect_t {
@@ -83,10 +92,16 @@ struct last_move_rect_t {
     WINDOW* last_move_border_win = nullptr;
 };
 
+struct castling_rect_t {
+    WINDOW* castling_win = nullptr;
+    WINDOW* castling_border_win = nullptr;
+};
+
 struct layout_t {
     board_rect_t board_rect;
     game_status_rect_t game_status_rect;
     last_move_rect_t last_move_rect;
+    castling_rect_t castling_rect;
 };
 
 namespace {
@@ -183,6 +198,22 @@ void init_last_move_rect(layout_t& layout) {
     wborder(layout.last_move_rect.last_move_border_win, 0, 0, 0, 0, 0, 0, 0, 0);
 }
 
+void init_castling_rect(layout_t& layout) {
+    auto castling_h = CASTLING_HEIGHT - 2;
+    auto castling_w = CASTLING_WIDTH - 2;
+    auto castling_y = CHESSBOARD_OFFSET_Y + 1;
+    auto castling_x = CHESSBOARD_OFFSET_X + RANK_DESC_WIDTH + CHESSBOARD_BORDER * 2 +
+        SQUARE_WIDTH * 8 + CASTLING_OFFSET_X + CASTLING_WIDTH;
+    layout.castling_rect.castling_win = newwin(castling_h, castling_w, castling_y, castling_x);
+
+    auto border_h = castling_h + 2;
+    auto border_w = castling_w + 2;
+    auto border_y = castling_y - 1;
+    auto border_x = castling_x - 1;
+    layout.castling_rect.castling_border_win = newwin(border_h, border_w, border_y, border_x);
+    wborder(layout.castling_rect.castling_border_win, 0, 0, 0, 0, 0, 0, 0, 0);
+}
+
 void update_board_win(WINDOW* w, const board_state_t& board) {
     auto active_pair = INFO_COLOR_PAIR;
     auto update_color = [&, char_count = 0](const auto player) mutable {
@@ -261,6 +292,36 @@ void update_last_move_win(WINDOW* w, const board_state_t& board) {
     }
 }
 
+void update_castling_win(WINDOW* w, const board_state_t& board) {
+    auto castling = board_state_meta_get_castling_rights(board);
+
+    werase(w);
+    wmove(w, 0, 0);
+    waddstr(w, " Castling:\n");
+
+    waddch(w, ' ');
+    wattron(w, A_BOLD | COLOR_PAIR(INV_COLOR_PAIR));
+    waddwstr(w, PIECE_TO_EMOJI[PLAYER_WHITE][PIECE_KING]);
+    waddwstr(w, PIECE_TO_EMOJI[PLAYER_WHITE][PIECE_ROOK]);
+    wattroff(w, A_BOLD | COLOR_PAIR(INV_COLOR_PAIR));
+    waddstr(w, " SHORT: ");
+    waddstr(w, (castling_rights_white_short(castling) ? "YES" : "NO "));
+    waddstr(w, " | LONG: ");
+    waddstr(w, (castling_rights_white_long(castling) ? "YES" : "NO"));
+    waddch(w, '\n');
+
+    waddch(w, ' ');
+    wattron(w, A_BOLD | COLOR_PAIR(INV_COLOR_PAIR));
+    waddwstr(w, PIECE_TO_EMOJI[PLAYER_BLACK][PIECE_KING]);
+    waddwstr(w, PIECE_TO_EMOJI[PLAYER_BLACK][PIECE_ROOK]);
+    wattroff(w, A_BOLD | COLOR_PAIR(INV_COLOR_PAIR));
+    waddstr(w, " SHORT: ");
+    waddstr(w, (castling_rights_black_short(castling) ? "YES" : "NO "));
+    waddstr(w, " | LONG: ");
+    waddstr(w, (castling_rights_black_long(castling) ? "YES" : "NO"));
+    waddch(w, '\n');
+}
+
 void update_game_status_win(WINDOW* w, const std::string& str) {
     werase(w);
     waddstr(w, str.c_str());
@@ -285,18 +346,21 @@ layout_t init() {
     init_board_rect(layout);
     init_game_status_rect(layout);
     init_last_move_rect(layout);
+    init_castling_rect(layout);
 
     wrefresh(layout.board_rect.rank_desc_win);
     wrefresh(layout.board_rect.file_desc_win);
     wrefresh(layout.board_rect.board_border_win);
     wrefresh(layout.game_status_rect.game_status_border_win);
     wrefresh(layout.last_move_rect.last_move_border_win);
+    wrefresh(layout.castling_rect.castling_border_win);
     return layout;
 }
 
 void update_board(const layout_t& layout, const board_state_t& board) {
     update_board_win(layout.board_rect.board_win, board);
     update_last_move_win(layout.last_move_rect.last_move_win, board);
+    update_castling_win(layout.castling_rect.castling_win, board);
 }
 
 void update_game_status(const layout_t& layout, const std::string& str) {
@@ -307,6 +371,7 @@ void update(const layout_t& layout) {
     wrefresh(layout.board_rect.board_win);
     wrefresh(layout.game_status_rect.game_status_win);
     wrefresh(layout.last_move_rect.last_move_win);
+    wrefresh(layout.castling_rect.castling_win);
 }
 
 void finish(layout_t& layout) {
@@ -318,6 +383,8 @@ void finish(layout_t& layout) {
     delwin(layout.game_status_rect.game_status_border_win);
     delwin(layout.last_move_rect.last_move_win);
     delwin(layout.last_move_rect.last_move_border_win);
+    delwin(layout.castling_rect.castling_win);
+    delwin(layout.castling_rect.castling_border_win);
     endwin();
 }
 
