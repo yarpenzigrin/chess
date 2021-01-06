@@ -686,10 +686,15 @@ board_state_t* apply_move_if_valid(board_state_t* moves, const move_s& move) {
 
 board_state_t* promote_pawn_if_able(
     board_state_t* moves, const move_s& move, const piece_t promote_to) {
-    const auto temp_moves = moves;
-    moves = apply_move_if_valid(moves, move);
-    if (moves != temp_moves) {
-        (*temp_moves)[move.to] = field_set_piece((*temp_moves)[move.to], promote_to);
+    auto& board = *moves;
+    board[move.from] = field_set_piece(board[move.from], PIECE_EMPTY);
+    board[move.to] = field_set_piece(field_set_player(board[move.to], move.player), promote_to);
+
+    update_fields_under_attack(board);
+    if (not is_king_under_attack(board, move.player)) {
+        update_last_move(board, move);
+        update_castling_rights(board, move);
+        return moves + 1;
     }
     return moves;
 }
