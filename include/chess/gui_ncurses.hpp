@@ -32,7 +32,7 @@ struct preset_1 {
     static constexpr int GAME_STATUS_HEIGHT = 3;
     static constexpr int LAST_MOVE_WIDTH = 30;
     static constexpr int LAST_MOVE_HEIGHT = 5;
-    static constexpr int LAST_MOVE_OFFSET_X = 2;
+    static constexpr int LAST_MOVE_OFFSET_X = 3;
     static constexpr int CASTLING_WIDTH = 30;
     static constexpr int CASTLING_HEIGHT = 5;
     static constexpr int CASTLING_OFFSET_X = 2;
@@ -50,13 +50,13 @@ struct preset_2 {
     static constexpr int GAME_STATUS_HEIGHT = 3;
     static constexpr int LAST_MOVE_WIDTH = 30;
     static constexpr int LAST_MOVE_HEIGHT = 5;
-    static constexpr int LAST_MOVE_OFFSET_X = 2;
+    static constexpr int LAST_MOVE_OFFSET_X = 1;
     static constexpr int CASTLING_WIDTH = 30;
     static constexpr int CASTLING_HEIGHT = 5;
-    static constexpr int CASTLING_OFFSET_X = 2;
+    static constexpr int CASTLING_OFFSET_X = 0;
 };
 
-using DEFAULTS = preset_1;
+using DEFAULTS = preset_2;
 
 constexpr int SQUARE_WIDTH = DEFAULTS::SQUARE_WIDTH;
 constexpr int SQUARE_HEIGHT = DEFAULTS::SQUARE_HEIGHT;
@@ -203,7 +203,7 @@ void init_castling_rect(layout_t& layout) {
     auto castling_w = CASTLING_WIDTH - 2;
     auto castling_y = CHESSBOARD_OFFSET_Y + 1;
     auto castling_x = CHESSBOARD_OFFSET_X + RANK_DESC_WIDTH + CHESSBOARD_BORDER * 2 +
-        SQUARE_WIDTH * 8 + CASTLING_OFFSET_X + CASTLING_WIDTH;
+        SQUARE_WIDTH * 8 + LAST_MOVE_OFFSET_X + LAST_MOVE_WIDTH + CASTLING_OFFSET_X;
     layout.castling_rect.castling_win = newwin(castling_h, castling_w, castling_y, castling_x);
 
     auto border_h = castling_h + 2;
